@@ -1,6 +1,6 @@
 # Zenfyle — Product & Engineering Spec
 
-**Spec Version:** 1.2.0
+**Spec Version:** 1.4.0
 **Last Updated:** 2026-07-18
 **Status:** Frozen — see Section 12's Specification Freeze note. No further architectural changes unless a real implementation blocker is discovered; if one is, update this spec and bump the version before continuing.
 
@@ -10,6 +10,8 @@
 
 ## Specification Changelog
 *(Tracks revisions to this document only — not software releases. Once implementation begins, track actual release history in a root `CHANGELOG.md` instead; the two serve different purposes and won't duplicate each other as long as this one stays scoped to spec-level changes.)*
+**v1.4.0 — Real file-format icons (owner-requested, during Phase 2 review).** The owner asked for real MS Word/Excel/PowerPoint/PDF/JPG icons in the menus. Added `react-icons` (Font Awesome file-type glyphs) as a scoped second icon set for format icons, colored per each format's brand color, and updated Section 5's icon rule to permit this one exception. Trademark note recorded: the genuine Microsoft/Adobe logos are unavailable from reputable packs (pulled for trademark reasons) and are deliberately not used; FA's file-type glyphs are the license-safe equivalent. Format icons applied to every tool in every dropdown (owner follow-up): each tool's main icon is the real file-format glyph derived from the formats it accepts/produces (`formatIconForTool`), and the Lucide icon named in the registry is demoted to a small category-colored corner "action badge" so same-format tools (Merge/Split/Sign/Redact — all PDF) stay visually distinct. Convert tools name a format glyph directly and show no action badge. Icon resolution still flows through `lib/icons.ts`, and registry startup validation (Section 12) still fails on any unmapped icon name regardless of which set backs it.
+**v1.3.0 — Per-category accent colors (owner-requested, during Phase 2 review).** Icons and category surfaces previously used a single orange accent; the owner asked for colorful, trending icon/section colors. Adds a five-hue category accent system (Section 2's "Category accents" table): each tool category gets a jewel-tone stroke color, a pastel tint container background, and an AA-passing text variant for badges. Defined once as category-level metadata (`CATEGORY_ACCENTS` alongside the registry) and consumed by every surface that renders a tool or category card — the same single-source-of-truth rule as the registry itself (Section 12). Orange `--signal` remains the sole CTA/action color so calls-to-action never compete with category identity.
 **v1.2.0 — Owner-supplied palette (during Phase 1 review).** The product owner provided an exact, per-surface color specification (header gradient, CTA states, card borders/shadows, footer link tiers, section background rhythm) which replaces the v1.1.0 palette wholesale. The indigo `--accent` is dropped — orange (`--signal`) is now the single accent across links, hovers, and icons. Fonts unchanged from v1.1.0. Contrast was re-verified: most pairs pass WCAG AA; three pairs fall short and are flagged in Section 2's contrast note (white-on-signal CTA text, signal eyebrow on hero, footer copyright) — applied as supplied, pending owner confirmation or adjustment.
 **v1.1.0 — Visual refresh (owner-requested, during Phase 1 review).** The product owner reviewed the Phase 1 build and asked for more beautiful header/footer/body colors and more current/trending fonts. Section 2's palette and typography were revised: display font changed Space Grotesk → Bricolage Grotesque, body font Inter → Plus Jakarta Sans (JetBrains Mono unchanged); `--ink` deepened to a midnight indigo, `--paper` warmed, `--signal` brightened, and `--tool-blue` replaced with a vivid indigo `--accent` (token renamed to reflect that it is no longer blue). All reading-text color pairs re-verified against WCAG AA before adoption (ratios noted in Section 2). No architectural, behavioral, or scope changes — visual tokens only.
 **v1.0.0 — Frozen release.** Consolidates four rounds of spec review: UI/header/registry/architecture foundations, engineering rules and product/limits decisions, correctness fixes (Protect/Unlock PDF moved to server-side via qpdf, Redact PDF scoped to permanent removal, encrypted-file handling, expanded jobs table), and final production polish (StorageProvider naming, registry startup validation, Definition of Done, adapter pattern for processing libraries, extended anti-hallucination rule). See Section 12 for the engineering rules this release established and Section 8 for what was deliberately deferred.
@@ -77,14 +79,24 @@ If any box is unchecked, the phase is not done — don't report it as complete.
 | `--success` | `#157A4A` | Success toasts/states (carried from v1.1.0, owner palette didn't cover) |
 | `--error` | `#C13030` | Error toasts/states (carried from v1.1.0, owner palette didn't cover) |
 
-**Per-surface rules (owner-specified, exact):**
-- **Header:** vertical gradient `#102A43 → #0C2036`. Logo/heading `#F8FAFC`; nav links `#CBD5E1` default, `#FF6B35` hover; Log-in link `#CBD5E1` → `#F8FAFC` hover.
+**Per-surface rules (owner-specified, exact):**- **Header:** vertical gradient `#102A43 → #0C2036`. Logo/heading `#F8FAFC`; nav links `#CBD5E1` default, `#FF6B35` hover; Log-in link `#CBD5E1` → `#F8FAFC` hover.
 - **Primary CTA:** bg `#FF6B35`, hover `#E85A26`, text `#FFFFFF`; shadow resting `rgba(255,107,53,0.28)`, hover `rgba(255,107,53,0.36)`.
 - **Secondary buttons:** bg `#FFFFFF`, border `#EAE4D9`, border hover `#FF6B35`.
 - **Body rhythm:** primary bg `#FCF8F3`, alternate sections `#FFFFFF`, second alternate `#FBF6EF`.
 - **Hero:** gradient `#FEFBF7 → #FCF4E9`, radial glow behind headline `rgba(255,107,53,0.09)`, eyebrow `#FF6B35`, headline `#1E293B`, supporting copy `#64748B`.
 - **Cards:** bg `#FFFFFF`, border `#EFE8DC` → `#FFD9C7` hover; shadow `0 10px 35px rgba(15,23,42,0.07)` → `0 18px 50px rgba(15,23,42,0.12)` hover; icon container `#FFF0E7`, icon stroke `#1E293B` → `#FF6B35` hover; heading `#1E293B`, body `#64748B`.
 - **Footer:** bg `#102A43` (gradient-matched to header), headings `#FFFFFF`, links `#A8B0B9` → `#FF6B35` hover, description `#8B9AAB`, copyright `#5E7086`, divider `rgba(255,255,255,0.08)`.
+
+**Category accents (added v1.3.0 — one hue per tool category, used everywhere that category or its tools render):**
+| Category | Stroke/icon | Tint container bg | Text variant (badges, AA) |
+|---|---|---|---|
+| Merge & Organize | `#4F46E5` indigo | `#EEF2FF` | `#4F46E5` (6.29:1 on white) |
+| Convert | `#0D9488` teal | `#F0FDFA` | `#0F766E` (5.47:1 on white) |
+| Compress & Optimize | `#D97706` amber | `#FFFBEB` | `#B45309` (5.02:1 on white) |
+| Edit & Sign | `#7C3AED` violet | `#F5F3FF` | `#7C3AED` (5.70:1 on white) |
+| Security | `#E11D48` rose | `#FFF1F2` | `#BE123C` (6.29:1 on white) |
+
+Rules: icon strokes sit on their tint container (all pairs ≥3:1, the WCAG bar for graphical objects); badge/label text uses the text variant (all ≥4.5:1). Defined once next to the tool registry and consumed by every card/menu/grid — never re-declared per component. `--signal` orange stays reserved for CTAs, hovers on nav links, and active states so actions remain visually distinct from category identity; the card icon container `--icon-bg #FFF0E7` is superseded by per-category tints wherever a category is known (generic non-category surfaces may still use it).
 
 > **Contrast note (v1.2.0):** verified — logo on header 13.99:1, nav 9.86:1, nav hover 5.16:1, headline 13.83:1, secondary text 4.50:1 on `--paper` / 4.76:1 on white, footer links 6.68:1, footer description 5.10:1 — all pass WCAG AA. Three owner-supplied pairs fall below AA and are applied as supplied: **white text on the `#FF6B35` CTA (2.84:1)**, **`#FF6B35` eyebrow on the hero (2.75:1)**, and **`#5E7086` copyright on the footer (2.88:1)**. Mitigations if these need to pass later: CTA text could use `#1E293B` (5.16:1) or the CTA bg could darken; the eyebrow is short decorative label text; the copyright line could lighten to `#8B9AAB`. Flagged to the owner at Phase 1 review and **accepted as-is** (owner approved the palette with these noted). Anywhere else in this spec that names `--tool-blue` or `--accent`, read it as `--signal` (orange is the single accent as of v1.2.0); `--ink-secondary` reads as `--text-secondary`, `--paper-dim` as `--border`/`--paper-alt` by context.
 
@@ -270,7 +282,7 @@ The `OptionsPanel` component (Section 11.1's `components/tools/` folder) takes t
 - Fonts loaded via `next/font` (Space Grotesk, Inter, JetBrains Mono)
 - Client-side PDF/image libraries: `pdf-lib`, `pdf.js`, `browser-image-compression`
 - State: minimal — React state/context is sufficient, no need for Redux
-- Icons: single consistent icon set (e.g. Lucide, stroke-based) — do not mix icon libraries
+- Icons: Lucide (stroke-based) is the primary set for action/UI icons. **Exception (v1.4.0, owner-requested):** file-format icons use Font Awesome's file-type glyphs (`react-icons/fa6` — `FaFileWord`/`FaFileExcel`/`FaFilePowerpoint`/`FaFilePdf`/`FaFileImage`), rendered in each format's brand color, so format-oriented tools show a recognizable document icon. This is a deliberate, scoped mixing of two icon sets — the only permitted one. Note: the *actual* Microsoft/Adobe trademarked logos are intentionally NOT used; they've been removed from reputable icon packs (Simple Icons) for trademark reasons, and Font Awesome's generic file-type glyphs are the license-safe stand-in that reads the same. Both sets are still resolved through `lib/icons.ts` so the registry stays icon-library-agnostic (Section 12).
 
 ## 6. Backend, API & Database Spec
 **Agreed addition from spec review:** the original spec named categories of tools (a database, an ORM, an auth library) without picking specific ones — different coding agents would make different, possibly incompatible choices. Pinned below.

@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { validateRegistry } from "@/lib/registry.validate";
 import "./globals.css";
+
+// Section 12: fail build/startup on a bad registry entry, not at usage time.
+validateRegistry();
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",

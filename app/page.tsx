@@ -8,8 +8,16 @@ import {
   ShieldCheck,
   UserRound,
   Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  toolsByCategory,
+  type ToolCategory,
+} from "@/lib/registry";
+import { CATEGORY_ACCENTS } from "@/lib/accents";
 
 /*
  * Phase 1 placeholder homepage (Section 9: placeholder content is fine).
@@ -25,38 +33,33 @@ import { PageContainer } from "@/components/layout/PageContainer";
  * 3.2); no per-tool metadata is hardcoded (Section 12's registry rule).
  */
 
-const CATEGORIES = [
-  {
-    name: "Merge & Organize",
+/*
+ * Category cards render from the registry (labels, per-category tool counts)
+ * and CATEGORY_ACCENTS (v1.3.0 hues) — only the marketing one-liners and the
+ * representative icon are local, since neither is tool metadata.
+ */
+const CATEGORY_CARDS: Record<ToolCategory, { description: string; icon: LucideIcon }> = {
+  organize: {
     description: "Combine, split, and rearrange PDF pages",
-    badge: "6 TOOLS",
     icon: Layers,
   },
-  {
-    name: "Convert",
+  convert: {
     description: "PDF to Word, Excel, PPT, images — and back",
-    badge: "9 TOOLS",
     icon: ArrowLeftRight,
   },
-  {
-    name: "Compress & Optimize",
+  compress: {
     description: "Shrink PDFs and images without the ugly artifacts",
-    badge: "3 TOOLS",
     icon: Minimize2,
   },
-  {
-    name: "Edit & Sign",
+  "edit-sign": {
     description: "Annotate, watermark, number pages, and sign",
-    badge: "5 TOOLS",
     icon: PenLine,
   },
-  {
-    name: "Security",
+  security: {
     description: "Protect, unlock, redact, and compare documents",
-    badge: "4 TOOLS",
     icon: Lock,
   },
-];
+};
 
 const VALUE_PROPS = [
   {
@@ -64,18 +67,21 @@ const VALUE_PROPS = [
     description:
       "Most tools run entirely in your browser — your files never leave your device. Server-processed files are deleted within 2 hours.",
     icon: ShieldCheck,
+    accent: CATEGORY_ACCENTS.security.icon,
   },
   {
     title: "Fast, no fuss",
     description:
       "Drop a file, get a result. No watermarks on your output, no artificial waiting screens, no upsell walls between you and your download.",
     icon: Zap,
+    accent: CATEGORY_ACCENTS.compress.icon,
   },
   {
     title: "No account needed",
     description:
       "Every tool works without signing up. Create an account only if you want higher daily limits and job history.",
     icon: UserRound,
+    accent: CATEGORY_ACCENTS.organize.icon,
   },
 ];
 
@@ -147,24 +153,33 @@ export default function Home() {
             properly.
           </p>
           <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORIES.map(({ name, description, badge, icon: Icon }) => (
-              <div key={name} className={CARD_CLASSES}>
-                <div className="flex h-12 w-12 items-center justify-center rounded-card bg-icon-bg text-text transition-colors group-hover:text-signal">
-                  <Icon size={26} strokeWidth={2} />
+            {CATEGORY_ORDER.map((category) => {
+              const { description, icon: Icon } = CATEGORY_CARDS[category];
+              const accent = CATEGORY_ACCENTS[category];
+              const count = toolsByCategory(category).length;
+              return (
+                <div key={category} className={CARD_CLASSES}>
+                  <div
+                    className={`flex h-12 w-12 items-center justify-center rounded-card transition-transform group-hover:scale-105 ${accent.icon}`}
+                  >
+                    <Icon size={26} strokeWidth={2} />
+                  </div>
+                  <div className="mt-4 flex items-center gap-3">
+                    <h3 className="font-display text-xl font-medium leading-7 text-text">
+                      {CATEGORY_LABELS[category]}
+                    </h3>
+                    <span
+                      className={`rounded-badge px-2 py-0.5 font-mono text-[11px] font-medium ${accent.badge}`}
+                    >
+                      {count} TOOLS
+                    </span>
+                  </div>
+                  <p className="mt-2 font-body text-[13px] leading-[18px] text-text-secondary">
+                    {description}
+                  </p>
                 </div>
-                <div className="mt-4 flex items-center gap-3">
-                  <h3 className="font-display text-xl font-medium leading-7 text-text">
-                    {name}
-                  </h3>
-                  <span className="rounded-badge bg-paper px-2 py-0.5 font-mono text-[11px] font-medium text-signal">
-                    {badge}
-                  </span>
-                </div>
-                <p className="mt-2 font-body text-[13px] leading-[18px] text-text-secondary">
-                  {description}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </PageContainer>
       </section>
@@ -176,9 +191,11 @@ export default function Home() {
             Why Zenfyle
           </h2>
           <div className="mt-10 grid grid-cols-1 gap-6 md:grid-cols-3">
-            {VALUE_PROPS.map(({ title, description, icon: Icon }) => (
+            {VALUE_PROPS.map(({ title, description, icon: Icon, accent }) => (
               <div key={title} className={CARD_CLASSES}>
-                <div className="flex h-11 w-11 items-center justify-center rounded-card bg-icon-bg text-text transition-colors group-hover:text-signal">
+                <div
+                  className={`flex h-11 w-11 items-center justify-center rounded-card transition-transform group-hover:scale-105 ${accent}`}
+                >
                   <Icon size={22} strokeWidth={2} />
                 </div>
                 <h3 className="mt-4 font-display text-xl font-medium leading-7 text-text">

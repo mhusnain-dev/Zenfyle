@@ -29,6 +29,23 @@
   --color-success: #157a4a;
   --color-error: #c13030;
 
+  /* Category accents — Section 2 v1.3.0 (stroke / tint / AA text variant) */
+  --color-cat-organize: #4f46e5;
+  --color-cat-organize-tint: #eef2ff;
+  --color-cat-organize-text: #4f46e5;
+  --color-cat-convert: #0d9488;
+  --color-cat-convert-tint: #f0fdfa;
+  --color-cat-convert-text: #0f766e;
+  --color-cat-compress: #d97706;
+  --color-cat-compress-tint: #fffbeb;
+  --color-cat-compress-text: #b45309;
+  --color-cat-edit-sign: #7c3aed;
+  --color-cat-edit-sign-tint: #f5f3ff;
+  --color-cat-edit-sign-text: #7c3aed;
+  --color-cat-security: #e11d48;
+  --color-cat-security-tint: #fff1f2;
+  --color-cat-security-text: #be123c;
+
   --font-display: var(--font-bricolage);
   --font-body: var(--font-jakarta);
   --font-mono: var(--font-jetbrains-mono);
@@ -47,4 +64,39 @@ body {
 :focus-visible {
   outline: 2px solid var(--color-signal);
   outline-offset: 2px;
+}
+
+/* Section 3.2: mega-menu fade + 8px slide-down, 160ms ease-out */
+@keyframes menuIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* Section 3.4: badge stagger — opacity only, no movement */
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @keyframes menuIn {
+    from {
+      opacity: 0;
+      transform: translate(-50%, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  }
 }
