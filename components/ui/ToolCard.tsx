@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Tool } from "@/lib/registry";
 import { CATEGORY_ACCENTS } from "@/lib/accents";
 import { formatIconForTool, TOOL_ICONS } from "@/lib/icons";
@@ -88,10 +89,19 @@ export function ToolCard({
       ? "flex items-start gap-3 rounded-card p-3 transition-all duration-[120ms] hover:bg-white hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)]"
       : "flex min-h-11 items-start gap-3 py-4";
 
-  // Non-active tools: same card, no navigation (Section 4 comingSoon rule).
+  // Active tools link to /tools/[slug]; non-active render as a non-navigating
+  // card (Section 4 comingSoon rule).
+  if (disabled) {
+    return (
+      <div className={`group/entry ${layout}`} aria-disabled>
+        {inner}
+      </div>
+    );
+  }
+
   return (
-    <div className={`group/entry ${layout}`} aria-disabled={disabled}>
+    <Link href={`/tools/${tool.slug}`} className={`group/entry ${layout}`}>
       {inner}
-    </div>
+    </Link>
   );
 }

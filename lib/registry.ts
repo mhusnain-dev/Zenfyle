@@ -67,7 +67,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["combine", "join"],
     featured: false,
     homepageOrder: 1,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: true,
     outputExtension: ".pdf",
     optionsComponent: "MergeOptions",

@@ -11,8 +11,11 @@
   "dependencies": {
     "lucide-react": "^1.25.0",
     "next": "16.2.10",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "6.1.200",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-dropzone": "19.0.2",
     "react-icons": "5.7.0"
   },
   "devDependencies": {
