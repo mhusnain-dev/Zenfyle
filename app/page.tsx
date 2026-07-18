@@ -1,65 +1,21 @@
 import Link from "next/link";
-import {
-  ArrowLeftRight,
-  Layers,
-  Lock,
-  Minimize2,
-  PenLine,
-  ShieldCheck,
-  UserRound,
-  Zap,
-  type LucideIcon,
-} from "lucide-react";
+import { ShieldCheck, UserRound, Zap } from "lucide-react";
 import { PageContainer } from "@/components/layout/PageContainer";
-import {
-  CATEGORY_LABELS,
-  CATEGORY_ORDER,
-  toolsByCategory,
-  type ToolCategory,
-} from "@/lib/registry";
 import { CATEGORY_ACCENTS } from "@/lib/accents";
+import { SearchableToolGrid } from "@/components/home/SearchableToolGrid";
 
 /*
- * Phase 1 placeholder homepage (Section 9: placeholder content is fine).
- * The functional homepage — hero upload box (11.3.1), search (13.1), and the
- * per-tool grid — arrives in Phase 4 and reads from the tool registry.
+ * Homepage (Phase 4). Hero → searchable tool grid (SearchableToolGrid, reads
+ * the registry per Section 11.3 step 3 / 13.1) → "Why Zenfyle" value props.
+ * The hero upload box stays a styled preview: its functional tool-picker with
+ * file carry-over (11.3.1) needs tool pages as navigation targets, which land
+ * in Phase 5 — building it now would violate the phase gate.
  *
- * v1.2.0 palette, exact per-surface rules from Section 2:
- * hero gradient #FEFBF7 → #FCF4E9 with a radial signal glow, body rhythm
- * paper → white → paper-alt, cards with #EFE8DC → #FFD9C7 borders and the
- * owner-specified shadow pair.
- *
- * Category names/descriptions here mirror the five nav categories (Section
- * 3.2); no per-tool metadata is hardcoded (Section 12's registry rule).
+ * v1.2.0 palette, exact per-surface rules from Section 2: hero gradient
+ * #FEFBF7 → #FCF4E9 with a radial signal glow, body rhythm paper → white →
+ * paper-alt, cards with the owner-specified borders and shadow pair. No
+ * per-tool metadata is hardcoded (Section 12's registry rule).
  */
-
-/*
- * Category cards render from the registry (labels, per-category tool counts)
- * and CATEGORY_ACCENTS (v1.3.0 hues) — only the marketing one-liners and the
- * representative icon are local, since neither is tool metadata.
- */
-const CATEGORY_CARDS: Record<ToolCategory, { description: string; icon: LucideIcon }> = {
-  organize: {
-    description: "Combine, split, and rearrange PDF pages",
-    icon: Layers,
-  },
-  convert: {
-    description: "PDF to Word, Excel, PPT, images — and back",
-    icon: ArrowLeftRight,
-  },
-  compress: {
-    description: "Shrink PDFs and images without the ugly artifacts",
-    icon: Minimize2,
-  },
-  "edit-sign": {
-    description: "Annotate, watermark, number pages, and sign",
-    icon: PenLine,
-  },
-  security: {
-    description: "Protect, unlock, redact, and compare documents",
-    icon: Lock,
-  },
-};
 
 const VALUE_PROPS = [
   {
@@ -142,45 +98,18 @@ export default function Home() {
         </PageContainer>
       </section>
 
-      {/* Category grid — alternate section: white */}
+      {/* Tool grid — alternate section: white. Search + all 27 tools by
+          category, rendered from the registry (Section 11.3 step 3 / 13.1). */}
       <section id="categories" className="scroll-mt-24 bg-white py-20">
         <PageContainer>
           <h2 className="font-display text-[28px] font-medium leading-9 text-text">
             The workbenches
           </h2>
-          <p className="mt-2 max-w-xl font-body text-base leading-6 text-text-secondary">
+          <p className="mb-10 mt-2 max-w-xl font-body text-base leading-6 text-text-secondary">
             Twenty-seven tools across five benches, each built to do one job
             properly.
           </p>
-          <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {CATEGORY_ORDER.map((category) => {
-              const { description, icon: Icon } = CATEGORY_CARDS[category];
-              const accent = CATEGORY_ACCENTS[category];
-              const count = toolsByCategory(category).length;
-              return (
-                <div key={category} className={CARD_CLASSES}>
-                  <div
-                    className={`flex h-12 w-12 items-center justify-center rounded-card transition-transform group-hover:scale-105 ${accent.icon}`}
-                  >
-                    <Icon size={26} strokeWidth={2} />
-                  </div>
-                  <div className="mt-4 flex items-center gap-3">
-                    <h3 className="font-display text-xl font-medium leading-7 text-text">
-                      {CATEGORY_LABELS[category]}
-                    </h3>
-                    <span
-                      className={`rounded-badge px-2 py-0.5 font-mono text-[11px] font-medium ${accent.badge}`}
-                    >
-                      {count} TOOLS
-                    </span>
-                  </div>
-                  <p className="mt-2 font-body text-[13px] leading-[18px] text-text-secondary">
-                    {description}
-                  </p>
-                </div>
-              );
-            })}
-          </div>
+          <SearchableToolGrid />
         </PageContainer>
       </section>
 

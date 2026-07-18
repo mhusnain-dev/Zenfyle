@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, JetBrains_Mono, Plus_Jakarta_Sans } from "next/fon
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
 import { validateRegistry } from "@/lib/registry.validate";
+import { SITE_URL } from "@/lib/site";
 import "./globals.css";
 
 // Section 12: fail build/startup on a bad registry entry, not at usage time.
@@ -27,7 +28,11 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Zenfyle — Every file tool in one workshop",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "Zenfyle — Every file tool in one workshop",
+    template: "%s — Zenfyle",
+  },
   description:
     "Free PDF, image, and document tools that run right in your browser. Merge, convert, compress, sign — no signup required.",
 };
