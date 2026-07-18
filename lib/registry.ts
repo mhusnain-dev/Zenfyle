@@ -616,3 +616,52 @@ export function toolsByCategory(category: ToolCategory): Tool[] {
 export function getTool(slug: string): Tool | undefined {
   return TOOLS.find((t) => t.slug === slug);
 }
+
+/*
+ * Resolve a tool's relatedTools slugs to Tool objects, preserving order and
+ * dropping any that don't exist (registry validation already guarantees they
+ * do, but this keeps callers total). Used by tool pages in Phase 5+.
+ */
+export function getRelatedTools(slug: string): Tool[] {
+  const tool = getTool(slug);
+  if (!tool) return [];
+  return tool.relatedTools
+    .map(getTool)
+    .filter((t): t is Tool => t !== undefined);
+}
+
+/*
+ * Registry-backed search — matches name, description, and searchKeywords
+ * (Section 13.1 search overlay, Phase 4). Case-insensitive substring match;
+ * name matches rank above keyword/description matches. Single source of truth:
+ * search reads the registry, never a separate index.
+ */
+export function searchTools(query: string): Tool[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const scored: { tool: Tool; score: number }[] = [];
+  for (const tool of TOOLS) {
+    const name = tool.name.toLowerCase();
+    let score = 0;
+    if (name.startsWith(q)) score = 3;
+    else if (name.includes(q)) score = 2;
+    else if (tool.searchKeywords.some((k) => k.toLowerCase().startsWith(q)))
+      score = 1;
+    else if (
+      tool.description
+        .toLowerCase()
+        .split(/\W+/)
+        .some((w) => w.startsWith(q))
+    )
+      score = 0.5;
+    if (score > 0) scored.push({ tool, score });
+  }
+  return scored
+    .sort((a, b) => b.score - a.score || a.tool.name.localeCompare(b.tool.name))
+    .map((s) => s.tool);
+}
+
+/** Featured tools for "Popular" placements — empty until usage data exists. */
+export function getFeaturedTools(): Tool[] {
+  return TOOLS.filter((t) => t.featured);
+}
