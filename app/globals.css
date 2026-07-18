@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/*
+ * Zenfyle design tokens — specs.md Section 2 (v1.2.0 owner-supplied palette).
+ * The default Tailwind palette is cleared (`--color-*: initial`) per Section 5:
+ * only the tokens below exist as color utilities.
+ * Light mode only (Section 13.9) — no dark token set, no prefers-color-scheme.
+ */
+@theme {
+  --color-*: initial;
+  --color-ink: #102a43;
+  --color-ink-deep: #0c2036;
+  --color-text: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-paper: #fcf8f3;
+  --color-paper-alt: #fbf6ef;
+  --color-white: #ffffff;
+  --color-signal: #ff6b35;
+  --color-signal-hover: #e85a26;
+  --color-border: #eae4d9;
+  --color-card-border: #efe8dc;
+  --color-card-border-hover: #ffd9c7;
+  --color-icon-bg: #fff0e7;
+  --color-nav: #cbd5e1;
+  --color-nav-bright: #f8fafc;
+  --color-footer-link: #a8b0b9;
+  --color-footer-desc: #8b9aab;
+  --color-footer-copy: #5e7086;
+  --color-success: #157a4a;
+  --color-error: #c13030;
+
+  --font-display: var(--font-bricolage);
+  --font-body: var(--font-jakarta);
+  --font-mono: var(--font-jetbrains-mono);
+
+  --radius-card: 10px;
+  --radius-badge: 6px;
+}
+
+body {
+  background-color: var(--color-paper);
+  color: var(--color-text);
+  font-family: var(--font-body);
+}
+
+/* Section 3.6: visible focus ring on all interactive elements, never removed */
+:focus-visible {
+  outline: 2px solid var(--color-signal);
+  outline-offset: 2px;
+}
