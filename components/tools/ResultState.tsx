@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Check, Download, RotateCcw } from "lucide-react";
 import type { ProcessResult } from "@/lib/processors/types";
 
@@ -18,13 +18,28 @@ export function ResultState({
   result: ProcessResult;
   onReset: () => void;
 }) {
-  // Create the object URL once (lazy init) and revoke it on unmount to avoid a
-  // leak. ResultState is remounted per result (startOver unmounts it), so the
-  // blob never changes under a mounted instance.
-  const [url] = useState(() => URL.createObjectURL(result.blob));
-  useEffect(() => () => URL.revokeObjectURL(url), [url]);
-
   const [downloaded, setDownloaded] = useState(false);
+
+  // Create a fresh object URL at click time, trigger the download, then revoke
+  // it. We deliberately do NOT hold a URL across renders: React Strict Mode
+  // double-invokes effects (mount → unmount → remount), so an effect-managed
+  // URL gets revoked on the throwaway unmount and the download link goes dead
+  // ("check your internet connection" in Chrome). Creating per-click avoids
+  // that entirely and still can't leak.
+  const download = () => {
+    const url = URL.createObjectURL(result.blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = result.filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    // Revoke after the click has been dispatched; a small delay keeps Firefox
+    // happy, which can cancel an in-flight download if the URL is revoked too
+    // eagerly.
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setDownloaded(true);
+  };
 
   return (
     <div className="rounded-card border border-border bg-white p-8 text-center">
@@ -39,15 +54,14 @@ export function ResultState({
       </p>
 
       <div className="mt-6 flex flex-col items-center gap-3">
-        <a
-          href={url}
-          download={result.filename}
-          onClick={() => setDownloaded(true)}
+        <button
+          type="button"
+          onClick={download}
           className="inline-flex items-center gap-2 rounded-card bg-signal px-6 py-3 font-body text-base font-semibold text-white shadow-[0_4px_14px_rgba(255,107,53,0.28)] transition-all hover:bg-signal-hover hover:shadow-[0_6px_20px_rgba(255,107,53,0.36)]"
         >
           <Download size={18} strokeWidth={2.5} />
           {downloaded ? "Download again" : "Download"}
-        </a>
+        </button>
         <button
           type="button"
           onClick={onReset}

@@ -11,7 +11,8 @@
       "Bash(curl -s http://localhost:3000/tools/merge-pdf)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/tools/split-pdf)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/tools/nonsense)",
-      "Bash(curl -s http://localhost:3000)"
+      "Bash(curl -s http://localhost:3000)",
+      "Bash(git commit -q -m 'Phase 5: Merge PDF end-to-end + shared tool page template *)"
     ]
   }
 }
