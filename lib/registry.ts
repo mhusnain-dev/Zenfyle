@@ -10,7 +10,8 @@ export type ToolCategory =
   | "convert"
   | "compress"
   | "edit-sign"
-  | "security";
+  | "security"
+  | "ocr";
 
 export type ToolStatus = "active" | "comingSoon" | "beta" | "disabled";
 
@@ -41,6 +42,7 @@ export const CATEGORY_LABELS: Record<ToolCategory, string> = {
   compress: "Compress & Optimize",
   "edit-sign": "Edit & Sign",
   security: "Security",
+  ocr: "OCR",
 };
 
 export const CATEGORY_ORDER: ToolCategory[] = [
@@ -49,6 +51,7 @@ export const CATEGORY_ORDER: ToolCategory[] = [
   "compress",
   "edit-sign",
   "security",
+  "ocr",
 ];
 
 export const TOOLS: readonly Tool[] = [
@@ -229,7 +232,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["xlsx", "spreadsheet", "table"],
     featured: false,
     homepageOrder: 3,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".xlsx",
     optionsComponent: "NoOptions",
@@ -578,7 +581,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["black out", "censor", "remove", "sensitive"],
     featured: false,
     homepageOrder: 3,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".pdf",
     optionsComponent: "RedactOptions",
@@ -599,11 +602,35 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["diff", "difference", "versions"],
     featured: false,
     homepageOrder: 4,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: true,
     outputExtension: ".pdf",
     optionsComponent: "CompareOptions",
     relatedTools: ["redact-pdf", "protect-pdf"],
+  },
+  // ── OCR ───────────────────────────────────────────────────────────────────
+  {
+    // Makes a scanned/image-only PDF searchable by adding an invisible text
+    // layer (Tesseract, spec v1.4.4). Reuses the OCR + invisible-layer pipeline
+    // built for redact-pdf; no new dependency. No user settings → NoOptions.
+    slug: "ocr-pdf",
+    name: "OCR PDF",
+    category: "ocr",
+    badge: "PDF (searchable)",
+    icon: "scan-text",
+    description: "Make a scanned PDF searchable with text recognition",
+    processing: "server",
+    requiresJobQueue: true,
+    acceptedTypes: [".pdf"],
+    maxFileSizeMb: 50,
+    searchKeywords: ["ocr", "scan", "searchable", "recognize", "text"],
+    featured: false,
+    homepageOrder: 1,
+    status: "active",
+    acceptsMultipleFiles: false,
+    outputExtension: ".pdf",
+    optionsComponent: "NoOptions",
+    relatedTools: ["pdf-to-excel", "redact-pdf"],
   },
 ];
 

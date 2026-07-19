@@ -77,6 +77,12 @@ model Job {
   // it (e.g. INVALID_PASSWORD → re-prompt) rather than parse the message text.
   errorCode           String?   @map("error_code")
 
+  // Result-screen summary an adapter returns on success (e.g. "Compressed from
+  // 4.2 MB to 1.1 MB (74% smaller)", "Found 3 added words"). Persisted so the
+  // status poll can surface it; distinct from the optional `note` advisory,
+  // which continues to ride in errorMessage on success.
+  resultSummary       String?   @map("result_summary")
+
   inputFileRef        String?   @map("input_file_ref")
   // Output storage key (may point to a .zip when >3 outputs). Also serves as the
   // download-URL lookup: the LocalDiskProvider's signed URL carries this key

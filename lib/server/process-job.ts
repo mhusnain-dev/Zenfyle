@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import JSZip from "jszip";
 import { prisma } from "@/lib/db";
-import { getStorage, storageKeys } from "@/lib/storage";
+import { getStorage, storageKeys, SECOND_INPUT_FILENAME } from "@/lib/storage";
 import { getServerProcessor } from "@/lib/server/tools";
 import { ProcessingError, type ServerOutputFile } from "@/lib/server/tools/types";
 import type { ErrorCode } from "@/lib/server/api-error";
@@ -70,6 +70,20 @@ export async function processJob(
     const inputBuffer = await storage.get(job.inputFileRef);
     const inputPath = path.join(workDir, path.basename(job.inputFileRef));
     await fs.writeFile(inputPath, inputBuffer);
+
+    // Two-file tools (compare-pdf): pull the second input from the job's `in2/`
+    // namespace onto disk too. Reconstructed from the job id (no DB column);
+    // a missing object means it wasn't a two-file job, so we simply skip it.
+    let secondInputPath: string | undefined;
+    try {
+      const key = storageKeys.input2(jobId, SECOND_INPUT_FILENAME);
+      const buf = await storage.get(key);
+      secondInputPath = path.join(workDir, SECOND_INPUT_FILENAME);
+      await fs.writeFile(secondInputPath, buf);
+    } catch {
+      secondInputPath = undefined; // single-file tool (the common case)
+    }
+
     await setProgress(jobId, "starting", 5);
 
     // 2. Run the tool adapter with the options captured at request time.
@@ -91,6 +105,7 @@ export async function processJob(
     const result = await processor(
       {
         inputPath,
+        secondInputPath,
         originalFilename: job.originalFilename,
         options,
         secret,
@@ -118,6 +133,7 @@ export async function processJob(
         outputFileRef: stored.key,
         outputFileSizeBytes: stored.sizeBytes,
         outputFileCount: result.outputs.length,
+        resultSummary: result.summary ?? null, // the outcome line shown on the result screen
         errorMessage: result.note ?? null, // note reuses the message channel for the "already optimal" case
         errorCode: null, // clear any code from a prior failed attempt (BullMQ retry)
         completedAt: new Date(),

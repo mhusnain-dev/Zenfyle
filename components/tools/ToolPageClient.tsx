@@ -51,15 +51,22 @@ export function ToolPageClient({ tool }: { tool: Tool }) {
 
   const minFiles = tool.acceptsMultipleFiles ? 2 : 1;
 
+  // Compare PDF takes exactly two files; merge takes any number. maxFiles caps
+  // the set so a compare job can't be handed a third document the server would
+  // ignore. undefined = unbounded (merge).
+  const maxFiles = tool.slug === "compare-pdf" ? 2 : undefined;
+
   const addFiles = useCallback(
     (incoming: File[]) => {
       setPickError(null);
       setOptions({}); // Section 13.6: options reset when the file set changes
-      setFiles((prev) =>
-        tool.acceptsMultipleFiles ? [...prev, ...incoming] : incoming.slice(0, 1),
-      );
+      setFiles((prev) => {
+        if (!tool.acceptsMultipleFiles) return incoming.slice(0, 1);
+        const combined = [...prev, ...incoming];
+        return maxFiles ? combined.slice(0, maxFiles) : combined;
+      });
     },
-    [tool.acceptsMultipleFiles],
+    [tool.acceptsMultipleFiles, maxFiles],
   );
 
   const reorder = useCallback((from: number, to: number) => {
@@ -156,7 +163,9 @@ export function ToolPageClient({ tool }: { tool: Tool }) {
               </h2>
               {tool.acceptsMultipleFiles && files.length < minFiles && (
                 <span className="font-body text-[13px] text-text-secondary">
-                  Add at least {minFiles} to merge
+                  {tool.slug === "compare-pdf"
+                    ? "Add a second PDF to compare"
+                    : `Add at least ${minFiles} to merge`}
                 </span>
               )}
             </div>

@@ -24,6 +24,7 @@ type StatusResponse = {
   download_url?: string;
   error_message?: string;
   error_code?: string;
+  summary?: string;
   note?: string;
 };
 
@@ -62,6 +63,12 @@ export async function runServerJob(
   const form = new FormData();
   form.append("tool_slug", slug);
   form.append("file", input.files[0]);
+  // Two-file tools (compare-pdf) send a second document alongside the first in
+  // the same request. §6.2 keeps its single-`file` contract; `file2` is an
+  // additive side input the route stores separately (see app/api/jobs/route.ts).
+  if (input.files.length > 1) {
+    form.append("file2", input.files[1]);
+  }
   if (Object.keys(input.options).length > 0) {
     form.append("options", JSON.stringify(input.options));
   }
@@ -158,7 +165,8 @@ async function downloadResult(
 
   return {
     outputs: [{ blob, filename }],
-    summary: "Your file is ready to download.",
+    // The adapter's outcome line if it set one; the generic fallback otherwise.
+    summary: data.summary ?? "Your file is ready to download.",
     note: data.note,
   };
 }

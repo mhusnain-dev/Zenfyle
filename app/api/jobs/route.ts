@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/db";
 import { getTool } from "@/lib/registry";
-import { getStorage, storageKeys } from "@/lib/storage";
+import { getStorage, storageKeys, SECOND_INPUT_FILENAME } from "@/lib/storage";
 import { getQueue } from "@/lib/queue";
 import { isServerToolImplemented } from "@/lib/server/tools";
 import { validateUpload } from "@/lib/server/validate-upload";
@@ -137,6 +137,27 @@ export async function POST(req: NextRequest) {
     return apiError(validation.code, validation.message);
   }
 
+  // Two-file server tools (compare-pdf) carry a second document in `file2`.
+  // It goes in the same per-job namespace under a fixed key (§6.2 kept its
+  // single-`file` contract; this is an additive side input, like the secret).
+  // Validated with the same magic-byte check before the job is created.
+  let secondBuffer: Buffer | null = null;
+  if (tool.acceptsMultipleFiles) {
+    const file2 = form.get("file2");
+    if (!(file2 instanceof File)) {
+      return apiError("FILE_CORRUPTED", "This tool needs two files to compare.");
+    }
+    secondBuffer = Buffer.from(await file2.arrayBuffer());
+    const validation2 = validateUpload(
+      secondBuffer,
+      tool.acceptedTypes,
+      tool.maxFileSizeMb,
+    );
+    if (!validation2.ok) {
+      return apiError(validation2.code, validation2.message);
+    }
+  }
+
   // Create the job row, then store the input under its id namespace.
   const job = await prisma.job.create({
     data: {
@@ -165,6 +186,16 @@ export async function POST(req: NextRequest) {
       await getStorage().save(
         Buffer.from(secret, "utf8"),
         storageKeys.secret(job.id),
+      );
+    }
+
+    // Store the second input (compare-pdf) under its fixed key. Not tracked in
+    // a DB column; the worker reconstructs the key from the job id and cleanup
+    // sweeps it the same way.
+    if (secondBuffer) {
+      await getStorage().save(
+        secondBuffer,
+        storageKeys.input2(job.id, SECOND_INPUT_FILENAME),
       );
     }
 

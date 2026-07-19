@@ -15,6 +15,7 @@ import {
   PenLine,
   Presentation,
   RotateCw,
+  ScanText,
   Scissors,
   Sheet,
   Stamp,
@@ -60,6 +61,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   unlock: Unlock,
   "eye-off": EyeOff,
   "git-compare": GitCompare,
+  "scan-text": ScanText,
 };
 
 /*

@@ -18,6 +18,12 @@ export type ServerOutputFile = {
 export type ServerProcessInput = {
   /** Absolute path to the validated input file the worker wrote to disk. */
   inputPath: string;
+  /**
+   * Absolute path to the second input, present only for two-file tools
+   * (compare-pdf). The worker downloads it from the job's `in2/` namespace
+   * before running the adapter; undefined for every single-file tool.
+   */
+  secondInputPath?: string;
   /** Original upload filename (for messages only — never trusted for paths). */
   originalFilename: string;
   /** Tool options from the request (same shape the client OptionsPanel emits). */

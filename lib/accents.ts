@@ -42,4 +42,9 @@ export const CATEGORY_ACCENTS: Record<ToolCategory, CategoryAccent> = {
     badge: "bg-cat-security-tint text-cat-security-text",
     action: "text-cat-security",
   },
+  ocr: {
+    icon: "bg-cat-ocr-tint text-cat-ocr",
+    badge: "bg-cat-ocr-tint text-cat-ocr-text",
+    action: "text-cat-ocr",
+  },
 };

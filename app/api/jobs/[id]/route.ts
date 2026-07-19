@@ -33,6 +33,7 @@ export async function GET(
     download_url?: string;
     error_message?: string;
     error_code?: string;
+    summary?: string;
     note?: string;
   } = { status: job.status };
 
@@ -50,6 +51,8 @@ export async function GET(
       job.outputFileRef,
       2 * 60 * 60,
     );
+    // The adapter's real outcome line (compress ratio, compare change counts).
+    if (job.resultSummary) body.summary = job.resultSummary;
     // The "already optimally sized" note rides in errorMessage on success.
     if (job.errorMessage) body.note = job.errorMessage;
   }

@@ -31,9 +31,20 @@ export function getStorage(): StorageProvider {
 export type { StorageProvider };
 export { decodeStorageToken } from "./local-disk";
 
+/**
+ * Fixed on-disk name for a two-file tool's second input (compare-pdf). The
+ * route, worker, and cleanup all reference this constant so the key is
+ * reconstructable without a DB column — mirroring the fixed `.secret` name.
+ */
+export const SECOND_INPUT_FILENAME = "input2.pdf";
+
 /** Storage-key helpers so key layout lives in one place (Section 6 naming). */
 export const storageKeys = {
   input: (jobId: string, filename: string) => `jobs/${jobId}/in/${filename}`,
+  // Second input file, used only by two-file tools (compare-pdf). Kept in the
+  // same per-job `in/` namespace as the primary input and the secret, so the
+  // existing cleanup sweep collects it with no extra bookkeeping.
+  input2: (jobId: string, filename: string) => `jobs/${jobId}/in2/${filename}`,
   output: (jobId: string, filename: string) => `jobs/${jobId}/out/${filename}`,
   // Short-lived per-job secret (e.g. a PDF password) delivered to the worker
   // out-of-band from optionsJson so it is never persisted in the DB or the

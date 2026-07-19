@@ -45,6 +45,9 @@
   --color-cat-security: #e11d48;
   --color-cat-security-tint: #fff1f2;
   --color-cat-security-text: #be123c;
+  --color-cat-ocr: #0284c7;
+  --color-cat-ocr-tint: #f0f9ff;
+  --color-cat-ocr-text: #0369a1;
 
   --font-display: var(--font-bricolage);
   --font-body: var(--font-jakarta);

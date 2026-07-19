@@ -9,6 +9,10 @@ import { pdfToJpg } from "./pdf-to-jpg";
 import { pdfToPng } from "./pdf-to-png";
 import { pdfToWord } from "./pdf-to-word";
 import { pdfToPpt } from "./pdf-to-ppt";
+import { pdfToExcel } from "./pdf-to-excel";
+import { comparePdf } from "./compare-pdf";
+import { redactPdf } from "./redact-pdf";
+import { ocrPdfTool } from "./ocr-pdf";
 
 /*
  * Server-tool registry, keyed by the same slug as lib/registry.ts. The worker
@@ -27,8 +31,15 @@ const SERVER_TOOLS: Record<string, ServerProcessor> = {
   "pdf-to-png": pdfToPng,
   "pdf-to-word": pdfToWord,
   "pdf-to-ppt": pdfToPpt,
-  // pdf-to-excel stays comingSoon: LibreOffice has no PDF→Calc import filter,
-  // and faking table extraction would violate the anti-hallucination rule (§588).
+  // pdf-to-excel: geometry-based table extraction + Tesseract OCR fallback for
+  // scanned pages (spec v1.4.3). Not LibreOffice — it has no PDF→Calc filter.
+  "pdf-to-excel": pdfToExcel,
+  "compare-pdf": comparePdf,
+  // redact-pdf: permanent removal via flatten + re-OCR searchable layer (§4.1c).
+  "redact-pdf": redactPdf,
+  // ocr-pdf: flatten + re-OCR invisible text layer to make a scan searchable
+  // (spec v1.4.4). Same pipeline as redact-pdf minus the region blackout.
+  "ocr-pdf": ocrPdfTool,
 };
 
 export function getServerProcessor(slug: string): ServerProcessor | undefined {

@@ -17,6 +17,8 @@ import { WatermarkOptions } from "@/components/tools/options/WatermarkOptions";
 import { SignOptions } from "@/components/tools/options/SignOptions";
 import { FillFormOptions } from "@/components/tools/options/FillFormOptions";
 import { AnnotateOptions } from "@/components/tools/options/AnnotateOptions";
+import { CompareOptions } from "@/components/tools/options/CompareOptions";
+import { RedactOptions } from "@/components/tools/options/RedactOptions";
 
 /*
  * Dynamic options panel (Section 4.3). Renders the component named by the
@@ -48,6 +50,8 @@ const OPTIONS_COMPONENTS: Record<string, OptionsComponent> = {
   SignOptions,
   FillFormOptions,
   AnnotateOptions,
+  CompareOptions,
+  RedactOptions,
 };
 
 export function OptionsPanel({

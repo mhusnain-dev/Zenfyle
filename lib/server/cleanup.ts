@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { getStorage, storageKeys } from "@/lib/storage";
+import { getStorage, storageKeys, SECOND_INPUT_FILENAME } from "@/lib/storage";
 
 /*
  * Result cleanup (Section 6): 2 hours after a job completes, its input and
@@ -23,6 +23,10 @@ export async function cleanupJob(jobId: string): Promise<void> {
     // Backstop: the worker deletes the secret before processing, but sweep it
     // here too so a job that never reached the worker leaves nothing behind.
     storageKeys.secret(jobId),
+    // Second input file for two-file tools (compare-pdf). Its key is fixed
+    // (compare-pdf only accepts .pdf), so we can sweep it without a DB column;
+    // a no-op delete for the single-file tools that never wrote one.
+    storageKeys.input2(jobId, SECOND_INPUT_FILENAME),
   ].filter((k): k is string => Boolean(k));
   for (const key of keys) {
     await storage.delete(key).catch(() => {

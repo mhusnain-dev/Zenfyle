@@ -17,7 +17,9 @@
     "better-sqlite3": "12.4.1",
     "browser-image-compression": "2.0.2",
     "bullmq": "5.80.9",
+    "diff": "8.0.2",
     "dotenv": "16.4.7",
+    "exceljs": "4.4.0",
     "ioredis": "5.11.1",
     "jszip": "3.10.1",
     "lucide-react": "^1.25.0",
@@ -31,6 +33,7 @@
     "react-dom": "19.2.4",
     "react-dropzone": "19.0.2",
     "react-icons": "5.7.0",
+    "sharp": "0.34.5",
     "zod": "4.4.3"
   },
   "devDependencies": {
