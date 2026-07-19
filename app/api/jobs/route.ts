@@ -1,0 +1,155 @@
+import { createHash } from "node:crypto";
+import { NextResponse, type NextRequest } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/db";
+import { getTool } from "@/lib/registry";
+import { getStorage, storageKeys } from "@/lib/storage";
+import { getQueue } from "@/lib/queue";
+import { isServerToolImplemented } from "@/lib/server/tools";
+import { validateUpload } from "@/lib/server/validate-upload";
+import { apiError } from "@/lib/server/api-error";
+
+/*
+ * POST /api/jobs (Section 6.2) — the single entry point for server-side tools.
+ * multipart body { tool_slug, file[, options] } → { job_id, status: "queued" }.
+ *
+ * Flow: validate request → resolve + gate the tool → content-validate the file
+ * (Section 6.3, magic bytes / zero-byte / size, server-side) → create the job
+ * row → store the input → enqueue. Rate-limit ENFORCEMENT is Phase 7 (spec
+ * line 414); we already record a usage_event here so that phase has data and
+ * only needs to add the counter check, not new plumbing.
+ */
+
+// Node runtime (not Edge): we use node:crypto, Buffer, and the storage/queue
+// layers which touch the filesystem and Prisma.
+export const runtime = "nodejs";
+
+const OptionsSchema = z.record(z.string(), z.unknown());
+
+function hashIp(req: NextRequest): string {
+  const fwd = req.headers.get("x-forwarded-for");
+  const ip = fwd?.split(",")[0]?.trim() || "unknown";
+  // Salt so the stored hash isn't a plain reversible IP (Section 6.1 ip_hash).
+  const salt = process.env.IP_HASH_SALT ?? "zenfyle-dev-salt";
+  return createHash("sha256").update(`${salt}:${ip}`).digest("hex").slice(0, 32);
+}
+
+export async function POST(req: NextRequest) {
+  let form: FormData;
+  try {
+    form = await req.formData();
+  } catch {
+    return apiError("FILE_CORRUPTED", "The upload could not be read.");
+  }
+
+  const toolSlug = form.get("tool_slug");
+  const file = form.get("file");
+  const rawOptions = form.get("options");
+
+  if (typeof toolSlug !== "string" || !toolSlug) {
+    return apiError("UNSUPPORTED_FILE_TYPE", "Missing tool selection.");
+  }
+  if (!(file instanceof File)) {
+    return apiError("FILE_CORRUPTED", "No file was uploaded.");
+  }
+
+  // Resolve + gate the tool. A direct API hit on a client-only, comingSoon, or
+  // unimplemented tool is rejected as TOOL_UNAVAILABLE (Section 13.7).
+  const tool = getTool(toolSlug);
+  if (!tool || tool.processing !== "server") {
+    return apiError("TOOL_UNAVAILABLE", "This tool isn't available.");
+  }
+  if (tool.status === "comingSoon" || tool.status === "disabled") {
+    return apiError("TOOL_UNAVAILABLE", "This tool isn't available yet.");
+  }
+  if (!isServerToolImplemented(toolSlug)) {
+    return apiError("TOOL_UNAVAILABLE", "This tool isn't available yet.");
+  }
+
+  // Parse options if present (same shape the client OptionsPanel emits).
+  let options: Record<string, unknown> = {};
+  if (typeof rawOptions === "string" && rawOptions.length > 0) {
+    try {
+      options = OptionsSchema.parse(JSON.parse(rawOptions));
+    } catch {
+      return apiError("UNSUPPORTED_FILE_TYPE", "Invalid tool options.");
+    }
+  }
+
+  // Pull any password OUT of options before anything is persisted (v1.4.1): it
+  // must never land in optionsJson/the DB/the dashboard history. It's delivered
+  // to the worker via a short-lived storage object (the "secret" side-channel)
+  // and handed to qpdf over stdin — never argv. See lib/server/tools/qpdf.ts.
+  let secret: string | undefined;
+  if (typeof options.password === "string" && options.password.length > 0) {
+    secret = options.password;
+  }
+  delete options.password;
+
+  // Content-based validation (Section 6.3) — never trust extension or client.
+  const buffer = Buffer.from(await file.arrayBuffer());
+  const validation = validateUpload(
+    buffer,
+    tool.acceptedTypes,
+    tool.maxFileSizeMb,
+  );
+  if (!validation.ok) {
+    return apiError(validation.code, validation.message);
+  }
+
+  // Create the job row, then store the input under its id namespace.
+  const job = await prisma.job.create({
+    data: {
+      toolSlug,
+      status: "queued",
+      originalFilename: file.name.slice(0, 255),
+      mimeType: validation.mimeType,
+      fileSizeBytes: buffer.byteLength,
+      optionsJson: Object.keys(options).length ? JSON.stringify(options) : null,
+    },
+  });
+
+  try {
+    const inputKey = storageKeys.input(job.id, "input" + extOf(tool.acceptedTypes, file.name));
+    await getStorage().save(buffer, inputKey);
+    await prisma.job.update({
+      where: { id: job.id },
+      data: { inputFileRef: inputKey },
+    });
+
+    // Stash the password (if any) as the job's out-of-band secret. The worker
+    // reads and deletes it before running the adapter; cleanupJob sweeps it too.
+    if (secret !== undefined) {
+      await getStorage().save(
+        Buffer.from(secret, "utf8"),
+        storageKeys.secret(job.id),
+      );
+    }
+
+    // Record usage for Phase 7 rate-limiting/analytics (Section 6.1).
+    await prisma.usageEvent.create({
+      data: { ipHash: hashIp(req), toolSlug },
+    });
+
+    const queue = await getQueue();
+    await queue.enqueue(job.id);
+  } catch (err) {
+    console.error("[POST /api/jobs] enqueue failed:", err);
+    await prisma.job
+      .update({
+        where: { id: job.id },
+        data: { status: "error", errorMessage: "Could not start processing." },
+      })
+      .catch(() => {});
+    return apiError("WORKER_ERROR", "Could not start processing this file.");
+  }
+
+  return NextResponse.json({ job_id: job.id, status: "queued" });
+}
+
+/** Pick the input file extension to store under (validated, so it's safe). */
+function extOf(acceptedTypes: readonly string[], filename: string): string {
+  const lower = filename.toLowerCase();
+  const match = acceptedTypes.find((e) => lower.endsWith(e.toLowerCase()));
+  return match ?? acceptedTypes[0] ?? "";
+}

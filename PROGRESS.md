@@ -2,7 +2,7 @@
 
 Living status doc. Read `CLAUDE.md` first (rules + architecture), then this. Update both as each sub-task completes, not just at context limits. `specs.md` §9 defines the phase order and is the source of truth.
 
-Last updated: session handoff during **Phase 6 (server-side tools + API)** — Compress PDF shipped; Protect/Unlock PDF (qpdf) in progress.
+Last updated: **Phase 6 (server-side tools + API) complete** — Compress, Protect, and Unlock PDF all shipped (spec v1.4.1). Ready for owner sign-off before Phase 7.
 
 ---
 
@@ -37,33 +37,36 @@ Last updated: session handoff during **Phase 6 (server-side tools + API)** — C
 
 ---
 
-## 🔨 In progress — Protect PDF + Unlock PDF (finishing Phase 6's server tools, §11.5)
+## ✅ Done — Protect PDF + Unlock PDF (Phase 6's server tools complete, §11.5) — spec v1.4.1
 
-Owner chose "Finish Phase 6 tools" (Protect + Unlock via qpdf) before moving to Phase 7.
+Owner chose "Finish Phase 6 tools" (Protect + Unlock via qpdf) before moving to Phase 7. Both shipped and verified. Two spec-level additions were needed and agreed before coding (see spec Changelog v1.4.1): the password side-channel and the `error_code` column.
 
-**qpdf behavior already verified (12.3.2):**
-- Encrypt: `qpdf --encrypt <user> <owner> 256 -- in.pdf out.pdf` (256-bit AES). rc 0 on success.
-- Decrypt: `qpdf --decrypt --password=PW in.pdf out.pdf`. Correct PW → rc 0. **Wrong/missing PW → rc 2, stderr `invalid password`, no output written.**
-- Detect: `qpdf --is-encrypted in.pdf` → **rc 0 = encrypted, rc 2 = not encrypted** (no output, just exit code).
-- ⚠️ `--password-file=` is **NOT supported** in this qpdf's arg style the way first tried (it errored: "encryption options must be terminated with --"). Passing the password as a CLI arg is the working path — but see the open decision below about argv exposure. Re-test `--password-file=-` (stdin) placement carefully if we want to avoid argv; the earlier stdin test failed only because the test file path was wrong, not necessarily the flag.
+**qpdf behavior verified (12.3.2), now driving the adapters:**
+- Encrypt: `@-` argfile on **stdin** carries `--encrypt --user-password=PW --owner-password=PW --bits=256 -- in.pdf out.pdf` (256-bit AES). rc 0 on success. Password never on argv.
+- Decrypt: `qpdf --decrypt --password-file=- in.pdf out.pdf` with the password on **stdin**. Correct PW → rc 0. **Wrong/missing PW → rc 2, stderr `invalid password`, no output.** (`--password-file=-` DOES work — the earlier failure was a bad test path, not the flag.)
+- Detect: `qpdf --is-encrypted in.pdf` → **rc 0 = encrypted, rc 2 = not encrypted** (exit code only).
 
-**What's left in this sub-task (immediate next actions, in order):**
-1. **Create the two adapters** `lib/server/tools/protect-pdf.ts` and `lib/server/tools/unlock-pdf.ts` following the `compress-pdf.ts` shape (spawn qpdf with `signal`, `ProcessingError` for bad input). 
-   - Protect: read password from `options`, run `--encrypt`. Decide behavior if input is already encrypted (`--is-encrypted` rc 0) — likely `FILE_ENCRYPTED`/friendly message.
-   - Unlock: `--is-encrypted` first; if not encrypted → friendly note "this PDF has no password" (return original or explain); if encrypted → `--decrypt --password=`; rc 2 → map to **`INVALID_PASSWORD`**.
-2. **Register both** in `lib/server/tools/index.ts` (`SERVER_TOOLS` map) — one line each.
-3. **Create the options components** `components/tools/options/ProtectOptions.tsx` and `UnlockOptions.tsx` (single password field, §11.6 — no permission granularity) and add them to the `OPTIONS_COMPONENTS` map in `components/tools/OptionsPanel.tsx`. **Registry already references `optionsComponent: "ProtectOptions"` / `"UnlockOptions"` but the files DON'T EXIST yet** — panel returns null for them today.
-4. **Flip registry status** `comingSoon → active` for `protect-pdf` and `unlock-pdf` in `lib/registry.ts` (lines ~540 and ~560).
-5. **Handle the password/optionsJson decision** (see below) before persisting real passwords.
-6. **Verify** end-to-end: protect a PDF → confirm it's encrypted → unlock it with correct PW → wrong PW returns INVALID_PASSWORD → unlock an unencrypted PDF gives the friendly path. Then `npm run build` + `npm run lint` clean. Update this file, show owner, wait for sign-off (Phase Gate).
+**What was built:**
+1. **Shared qpdf helper** `lib/server/tools/qpdf.ts` — the single spawn point (adapter pattern), exports `isEncrypted`/`encrypt`/`decrypt`. Passwords go over stdin, never argv. Maps rc→`ProcessingError` codes (`INVALID_PASSWORD`, `FILE_CORRUPTED`).
+2. **Two thin adapters** `protect-pdf.ts` (rejects already-encrypted with `FILE_ENCRYPTED`) and `unlock-pdf.ts` (not-encrypted → friendly `note`, returns original; wrong PW → `INVALID_PASSWORD`). Both registered in `SERVER_TOOLS`.
+3. **Options components** `ProtectOptions.tsx` (password + confirm + show/hide, mismatch warning) and `UnlockOptions.tsx` (single password + show/hide), both in `OPTIONS_COMPONENTS`.
+4. **Registry** flipped `comingSoon → active` for both.
+5. **Password side-channel** — POST `/api/jobs` strips `password` out of options before the row is written (never in `optionsJson`), stores it under `storageKeys.secret(jobId)`; worker reads+deletes it and passes it to the adapter via `ServerProcessInput.secret`; `cleanupJob` sweeps the key as a backstop.
+6. **`error_code` column** — migration `add_error_code`; `ProcessingError.code`; persisted by `markError` (cleared on success for BullMQ retries); surfaced by GET `/api/jobs/[id]` as `error_code`; `server-job.ts` attaches it to the thrown Error.
+7. **`zod`** promoted to a declared dependency (4.4.3).
+8. **Inline wrong-password UX (§4.1c)** — `useToolJob` now surfaces `errorCode`; `ToolPageClient` shows a distinct, non-scary banner for `INVALID_PASSWORD` ("That password didn't work", KeyRound icon, signal color) and keeps the file + password field loaded so the user just corrects the password and clicks "Try again". (A fully inline re-prompt without the error screen is still possible later, but the correct-and-retry loop works today.)
+
+**Verified end-to-end against the running dev server** (real HTTP `/api/jobs` pipeline, not just adapters — 10/10 passing): protect→encrypted, unlock w/ correct PW→not-encrypted, wrong PW→job `error` carrying `error_code: INVALID_PASSWORD`, re-protect encrypted→`error_code: FILE_ENCRYPTED`, unlock unencrypted→success + note. Confirmed **no password ever lands in `optionsJson`** (all protect/unlock rows have `options_json: null`, 0 leaked rows) and no `.secret` files linger after processing. `npm run build` (34 routes, TS clean) + `npm run lint` clean.
+
+> Gotcha caught during verification: a dev server started *before* `prisma generate` holds a stale client with no `errorCode` column, so the final success write throws and jobs freeze at "finishing/100" with no logged error. Always restart `next dev` after a migration. Not a code bug — driving `processJob` directly succeeded.
 
 ---
 
 ## ⛔ Open decisions / blockers needing owner or explicit resolution
 
-1. **Password handling for Protect/Unlock (MUST resolve before shipping these).** The password currently would flow through `optionsJson`, which is **persisted on the Job row** and feeds dashboard history — i.e. user PDF passwords at rest in the DB, and visible in `ps`/argv when spawned. §588 anti-hallucination forbids fake/insecure crypto but this is a real handling gap. Options: (a) scrub `optionsJson` immediately after the worker reads it / never persist the password field; (b) pass the password to qpdf via stdin (`--password-file=-`) instead of argv to avoid process-list exposure — re-verify the flag placement; (c) both. **Recommended: never persist the password (strip before `prisma.job.create`, pass it through a side channel to the worker) + stdin to qpdf.** Needs a decision as this deviates slightly from the generic optionsJson flow.
-2. **Worker→client error CODE, not just message.** The job row carries `errorMessage` (string) but no error *code*, so the client can't distinguish `INVALID_PASSWORD` from a generic failure to, e.g., re-prompt for the password inline (§4.1c encrypted-PDF flow). Decide whether to add an `errorCode` column to `Job` or encode it in the message. §251 wants an inline wrong-password re-prompt loop — that likely needs the code.
-3. **`zod` not a declared dependency** (see CLAUDE.md) — add to package.json `dependencies` explicitly. Low effort, do it opportunistically.
+*(The four former entries — password/optionsJson handling, worker→client error code, undeclared `zod`, and the inline wrong-password UX — were all resolved in v1.4.1; see the Done section above.)*
+
+None open for Phase 6. Optional future polish (not blocking, not owed): a fully inline password re-prompt that skips the error screen entirely (§251) — today's correct-and-retry loop already lets the user fix a wrong password without re-uploading, so this is cosmetic.
 
 ---
 
@@ -76,7 +79,7 @@ Owner chose "Finish Phase 6 tools" (Protect + Unlock via qpdf) before moving to 
 
 **Phase 8 — Remaining conversion tools** (one at a time, same show-before-continue gate): PDF↔Word, PDF↔Excel, PDF↔PPT (LibreOffice `soffice` — installed), PDF↔JPG/PNG, Extract Pages, Add Page Numbers, Watermark, Sign, Fill Form, Optimize for Web, Compare PDF, and **Redact PDF** (needs Tesseract OCR — NOT installed; user-space install or keep `comingSoon`).
 
-Currently `comingSoon` (20 tools): extract-pages, pdf-to-word, word-to-pdf, pdf-to-excel, excel-to-pdf, pdf-to-ppt, ppt-to-pdf, pdf-to-jpg, jpg-to-pdf, pdf-to-png, optimize-for-web, add-page-numbers, add-watermark, edit-pdf, sign-pdf, fill-pdf-form, protect-pdf, unlock-pdf, redact-pdf, compare-pdf.
+Currently `comingSoon` (18 tools): extract-pages, pdf-to-word, word-to-pdf, pdf-to-excel, excel-to-pdf, pdf-to-ppt, ppt-to-pdf, pdf-to-jpg, jpg-to-pdf, pdf-to-png, optimize-for-web, add-page-numbers, add-watermark, edit-pdf, sign-pdf, fill-pdf-form, redact-pdf, compare-pdf. (protect-pdf and unlock-pdf are now `active`.)
 
 ---
 

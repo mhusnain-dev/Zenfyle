@@ -1,0 +1,105 @@
+// Zenfyle data model (Section 6.1). Provider is SQLite for local solo dev
+// (free, zero-setup, survives restarts on disk); the schema is written to be
+// Postgres-portable so the spec's pinned Neon/Postgres is a provider + URL
+// swap, not a rewrite:
+//   - status fields are String + app-level validation, not native enums
+//     (SQLite has no enum type; Postgres would allow one but keeping String
+//     avoids an enum migration when swapping)
+//   - all timestamps are DateTime, ids are cuid strings
+// NOTE (deviation): spec Section 6 pinned Prisma 6.x; 7.x is the current major
+// at install time, so per Section 6's "use the new major and note it" rule we
+// use 7.8.0.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/client"
+}
+
+// Prisma 7: connection URL lives in prisma.config.ts, not here. The runtime
+// client is constructed with a driver adapter (lib/db.ts).
+datasource db {
+  provider = "sqlite"
+}
+
+// Section 6.1 users — email + password only (Auth.js wired in Phase 7).
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String?  @map("password_hash")
+  planTier      String   @default("free") @map("plan_tier")
+  createdAt     DateTime @default(now()) @map("created_at")
+  jobs          Job[]
+
+  @@map("users")
+}
+
+// Section 6.1 jobs — expanded per spec review so failures/status are debuggable.
+model Job {
+  id                  String    @id @default(cuid())
+  userId              String?   @map("user_id") // nullable — anonymous allowed
+  user                User?     @relation(fields: [userId], references: [id])
+  toolSlug            String    @map("tool_slug") // references the tool registry
+
+  // queued | processing | success | error | cancelled | expired
+  status              String    @default("queued")
+
+  originalFilename    String    @map("original_filename")
+  mimeType            String    @map("mime_type")
+  fileSizeBytes       Int       @map("file_size_bytes")
+
+  // Tool options from the request, JSON-serialized (SQLite has no JSON type;
+  // stored as text and parsed in the worker). E.g. {"preset":"medium"}.
+  optionsJson         String?   @map("options_json")
+
+  errorMessage        String?   @map("error_message") // populated on failure
+  // Section 13.7 error code accompanying a failure so the client can branch on
+  // it (e.g. INVALID_PASSWORD → re-prompt) rather than parse the message text.
+  errorCode           String?   @map("error_code")
+
+  inputFileRef        String?   @map("input_file_ref")
+  // Output storage key (may point to a .zip when >3 outputs). Also serves as the
+  // download-URL lookup: the LocalDiskProvider's signed URL carries this key
+  // (base64url-encoded, unguessable since it embeds the cuid job id), and the
+  // download route resolves the job by outputFileRef, enforcing expiry/status
+  // from the DB. Nulling nothing extra is needed on cleanup — deleting the file
+  // makes storage.get throw and the `expired` status blocks the route.
+  outputFileRef       String?   @unique @map("output_file_ref")
+  outputFileSizeBytes Int?      @map("output_file_size_bytes")
+  outputFileCount     Int       @default(1) @map("output_file_count") // drives ZIP-if->3
+
+  // Progress for the GET /api/jobs/:id poll (Section 6.2). Kept as columns so a
+  // stateless Route Handler can read live progress the worker writes.
+  progressStage       String?   @map("progress_stage")
+  progressPercent     Int       @default(0) @map("progress_percent")
+
+  createdAt           DateTime  @default(now()) @map("created_at")
+  startedAt           DateTime? @map("started_at")
+  completedAt         DateTime? @map("completed_at")
+  expiresAt           DateTime? @map("expires_at")
+
+  @@index([status])
+  @@map("jobs")
+}
+
+// Section 6.1 usage_events — for Phase 7 rate-limiting + basic analytics.
+model UsageEvent {
+  id        String   @id @default(cuid())
+  userId    String?  @map("user_id")
+  ipHash    String   @map("ip_hash")
+  toolSlug  String   @map("tool_slug")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([ipHash, createdAt])
+  @@map("usage_events")
+}
+
+// Section 6.1 waitlist_emails — Pro-tier capture (source widened per spec).
+model WaitlistEmail {
+  id        String   @id @default(cuid())
+  email     String
+  source    String // "pricing" | "homepage"
+  ipHash    String   @map("ip_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("waitlist_emails")
+}

@@ -1,10 +1,12 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { AlertCircle, ServerCog } from "lucide-react";
+import { AlertCircle, KeyRound, ServerCog } from "lucide-react";
 import type { Tool } from "@/lib/registry";
 import type { ProcessOptions } from "@/lib/processors/types";
 import { getProcessor } from "@/lib/processors";
+import { runServerJob } from "@/lib/processors/server-job";
+import type { Processor } from "@/lib/processors/types";
 import { useToolJob } from "@/hooks/useToolJob";
 import { UploadZone } from "@/components/tools/UploadZone";
 import { FileList } from "@/components/tools/FileList";
@@ -20,13 +22,32 @@ import { ResultState } from "@/components/tools/ResultState";
  * 6.5). Only the processor and options component differ per tool.
  */
 export function ToolPageClient({ tool }: { tool: Tool }) {
-  const processor = useMemo(() => getProcessor(tool.slug), [tool.slug]);
+  // Server-side tools (Section 6) run through the /api/jobs pipeline, exposed
+  // as a Processor so useToolJob drives both paths identically. Client-side
+  // tools use their in-browser processor. The registry's `processing` field is
+  // the single source of truth for which path a tool takes.
+  const processor = useMemo<Processor | undefined>(() => {
+    if (tool.processing === "server") {
+      return (input, onProgress, signal) =>
+        runServerJob(tool.slug, input, onProgress, signal);
+    }
+    return getProcessor(tool.slug);
+  }, [tool.slug, tool.processing]);
   const [files, setFiles] = useState<File[]>([]);
   const [options, setOptions] = useState<ProcessOptions>({});
   const [pickError, setPickError] = useState<string | null>(null);
 
-  const { state, progress, result, error, needsServer, run, cancel, reset } =
-    useToolJob(tool.slug, processor);
+  const {
+    state,
+    progress,
+    result,
+    error,
+    errorCode,
+    needsServer,
+    run,
+    cancel,
+    reset,
+  } = useToolJob(tool.slug, processor);
 
   const minFiles = tool.acceptsMultipleFiles ? 2 : 1;
 
@@ -75,27 +96,38 @@ export function ToolPageClient({ tool }: { tool: Tool }) {
 
   // Error state (Section 4.2 step 5) — keeps the file loaded for "Try again".
   // needsServer is the Section 11.6 client-limit fallback, shown distinctly.
+  // A wrong password (§4.1c) isn't a hard failure — it's a correctable input,
+  // so it reads as guidance and keeps the password field loaded for retry.
+  const wrongPassword = errorCode === "INVALID_PASSWORD";
   const errorBanner =
     state === "error" && error ? (
       <div
         className={`flex items-start gap-3 rounded-card border p-4 ${
-          needsServer
+          needsServer || wrongPassword
             ? "border-signal/40 bg-icon-bg"
             : "border-error/30 bg-[#FBEBEB]"
         }`}
         role="alert"
       >
-        {needsServer ? (
+        {wrongPassword ? (
+          <KeyRound size={20} className="mt-0.5 shrink-0 text-signal" />
+        ) : needsServer ? (
           <ServerCog size={20} className="mt-0.5 shrink-0 text-signal" />
         ) : (
           <AlertCircle size={20} className="mt-0.5 shrink-0 text-error" />
         )}
         <div>
           <p className="font-body text-sm font-medium text-text">
-            {needsServer ? "This file needs server processing" : "Couldn't finish"}
+            {needsServer
+              ? "This file needs server processing"
+              : wrongPassword
+                ? "That password didn't work"
+                : "Couldn't finish"}
           </p>
           <p className="mt-0.5 font-body text-[13px] leading-[18px] text-text-secondary">
-            {error}
+            {wrongPassword
+              ? "Double-check the password and try again."
+              : error}
           </p>
         </div>
       </div>

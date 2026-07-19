@@ -32,6 +32,18 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+
+# local storage + sqlite dev db (Phase 6 server pipeline, local-disk provider)
+.storage/
+# DATABASE_URL="file:./dev.db" resolves relative to the project root, so the db
+# lands here, not under prisma/ — ignore both locations.
+dev.db
+*.db
+*.db-journal
+prisma/dev.db
+prisma/dev.db-journal
+prisma/*.db*
 
 # vercel
 .vercel

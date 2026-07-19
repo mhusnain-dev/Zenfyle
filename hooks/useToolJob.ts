@@ -35,6 +35,10 @@ export function useToolJob(slug: string, processor: Processor | undefined) {
   });
   const [result, setResult] = useState<ProcessResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Section 13.7 code carried up from the server path so the UI can branch —
+  // e.g. INVALID_PASSWORD keeps the password field in focus for an inline
+  // re-prompt (Section 4.1c / 251) instead of showing a generic failure.
+  const [errorCode, setErrorCode] = useState<string | null>(null);
   // True when the input exceeded the client limit (Section 11.6 server-path
   // fallback) — the UI shows a distinct message rather than a generic error.
   const [needsServer, setNeedsServer] = useState(false);
@@ -53,6 +57,7 @@ export function useToolJob(slug: string, processor: Processor | undefined) {
       abortRef.current = controller;
       setResult(null);
       setError(null);
+      setErrorCode(null);
       setNeedsServer(false);
       setProgress({ percent: 0, label: "Starting" });
       setState("processing");
@@ -79,6 +84,10 @@ export function useToolJob(slug: string, processor: Processor | undefined) {
         setError(
           err instanceof Error ? err.message : "Something went wrong.",
         );
+        // Section 13.7 code (e.g. INVALID_PASSWORD) if the server path set one,
+        // so the UI can branch on a wrong password vs a generic failure (§4.1c).
+        const code = (err as { code?: string }).code;
+        setErrorCode(typeof code === "string" ? code : null);
         setState("error");
       } finally {
         abortRef.current = null;
@@ -101,8 +110,19 @@ export function useToolJob(slug: string, processor: Processor | undefined) {
     setProgress({ percent: 0, label: "" });
     setResult(null);
     setError(null);
+    setErrorCode(null);
     setNeedsServer(false);
   }, []);
 
-  return { state, progress, result, error, needsServer, run, cancel, reset };
+  return {
+    state,
+    progress,
+    result,
+    error,
+    errorCode,
+    needsServer,
+    run,
+    cancel,
+    reset,
+  };
 }

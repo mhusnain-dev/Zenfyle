@@ -6,19 +6,29 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "worker": "tsx worker/index.ts",
+    "worker:dev": "tsx watch worker/index.ts"
   },
   "dependencies": {
+    "@prisma/adapter-better-sqlite3": "7.8.0",
+    "@prisma/client": "7.8.0",
+    "better-sqlite3": "12.4.1",
     "browser-image-compression": "2.0.2",
+    "bullmq": "5.80.9",
+    "dotenv": "16.4.7",
+    "ioredis": "5.11.1",
     "jszip": "3.10.1",
     "lucide-react": "^1.25.0",
+    "nanoid": "5.1.6",
     "next": "16.2.10",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.1.200",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-dropzone": "19.0.2",
-    "react-icons": "5.7.0"
+    "react-icons": "5.7.0",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -27,7 +37,9 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "prisma": "7.8.0",
     "tailwindcss": "^4",
+    "tsx": "4.19.2",
     "typescript": "^5"
   }
 }
