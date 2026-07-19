@@ -2,7 +2,7 @@
 
 Living status doc. Read `CLAUDE.md` first (rules + architecture), then this. Update both as each sub-task completes, not just at context limits. `specs.md` §9 defines the phase order and is the source of truth.
 
-Last updated: **Phase 7 (auth + usage tracking + rate limiting) complete** — signup/login/dashboard, password reset (real SMTP email verified), and daily rate limits all shipped and demoed (spec v1.4.2). Ready for owner sign-off before Phase 8.
+Last updated: **Phase 8 in progress** — 5 conversion tools shipped and verified end-to-end: Word→PDF, Excel→PDF, PPT→PDF (LibreOffice, shared factory), PDF→JPG, PDF→PNG (Ghostscript, multi-output ZIP). Phase 7 (auth + usage tracking + rate limiting) complete before this.
 
 ---
 
@@ -91,14 +91,14 @@ All shipped, both gates demoed to the owner (auth core + real SMTP email; rate l
 
 ## ⏳ Not started (remaining phases, in §9 order)
 
-**Phase 8 — Remaining conversion tools** (one at a time, same show-before-continue gate): PDF↔Word, PDF↔Excel, PDF↔PPT (LibreOffice `soffice` — installed), PDF↔JPG/PNG, Extract Pages, Add Page Numbers, Watermark, Sign, Fill Form, Optimize for Web, Compare PDF, and **Redact PDF** (needs Tesseract OCR — NOT installed; user-space install or keep `comingSoon`).
+**Phase 8 — Remaining conversion tools** (one at a time, same show-before-continue gate). **Shipped so far:** word-to-pdf, excel-to-pdf, ppt-to-pdf (LibreOffice), pdf-to-jpg, pdf-to-png (Ghostscript). **Still to build:** PDF→Word/Excel/PPT (lossy reverse via LibreOffice — will scope tightly per §4.1c), jpg-to-pdf (client, pdf-lib), extract-pages, add-page-numbers, add-watermark, sign-pdf, fill-pdf-form, edit-pdf/annotate (client tools), optimize-for-web (gs/qpdf), compare-pdf (text-diff, no scanned PDFs per §4.1c), and **redact-pdf** (needs Tesseract OCR — NOT installed; user-space install or keep `comingSoon`).
 
-Currently `comingSoon` (18 tools): extract-pages, pdf-to-word, word-to-pdf, pdf-to-excel, excel-to-pdf, pdf-to-ppt, ppt-to-pdf, pdf-to-jpg, jpg-to-pdf, pdf-to-png, optimize-for-web, add-page-numbers, add-watermark, edit-pdf, sign-pdf, fill-pdf-form, redact-pdf, compare-pdf. (protect-pdf and unlock-pdf are now `active`.)
+Currently `comingSoon` (13 tools): extract-pages, pdf-to-word, pdf-to-excel, pdf-to-ppt, jpg-to-pdf, optimize-for-web, add-page-numbers, add-watermark, edit-pdf, sign-pdf, fill-pdf-form, redact-pdf, compare-pdf. (Active now: protect-pdf, unlock-pdf, word-to-pdf, excel-to-pdf, ppt-to-pdf, pdf-to-jpg, pdf-to-png.)
 
 ---
 
 ## 🧹 Known issues / temp hacks to revisit
 - **qpdf is a user-space install** (`~/.local/qpdf` + wrapper). Fine for this dev box, but production/deploy must install qpdf as a real system package (documented in CLAUDE.md env section).
-- `packageAndStore` ZIP-for->1-output path in `process-job.ts` is currently **unexercised** (Compress PDF is single-output). First multi-output server tool (e.g. server Split) should verify it.
+- ~~`packageAndStore` ZIP-for->1-output path in `process-job.ts` is currently **unexercised**.~~ **Resolved:** PDF→JPG (multi-page) is the first multi-output server tool; verified end-to-end that a 3-page PDF produces a 3-entry ZIP with spec-compliant `-pNN` names and valid JPEG magic bytes, while a 1-page PDF still takes the single-file direct path.
 - `errorMessage` column is **overloaded**: carries both real error text and the success "already optimal" note. Works because they're read in mutually exclusive status branches, but it's a smell — see open decision #2 if adding an error code.
 - Nothing from Phase 6 is committed yet — a lot of untracked files (`app/api/`, `lib/db.ts`, `lib/queue/`, `lib/server/`, `lib/storage/`, `lib/processors/server-job.ts`, `prisma/`, `worker/`, `prisma.config.ts`, `.env.example`) plus modified `lib/registry.ts`, `components/tools/ToolPageClient.tsx`, `.gitignore`, `package.json`. Consider a "Phase 6" commit once Protect/Unlock land and the owner signs off.
