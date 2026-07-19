@@ -475,7 +475,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["annotate", "highlight", "draw", "markup", "edit"],
     featured: false,
     homepageOrder: 3,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".pdf",
     optionsComponent: "AnnotateOptions",
