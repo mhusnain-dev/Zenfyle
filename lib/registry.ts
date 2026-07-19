@@ -209,7 +209,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["docx", "word"],
     featured: false,
     homepageOrder: 2,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".pdf",
     optionsComponent: "NoOptions",

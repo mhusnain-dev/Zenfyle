@@ -10,6 +10,7 @@ import { RemovePagesOptions } from "@/components/tools/options/RemovePagesOption
 import { CompressOptions } from "@/components/tools/options/CompressOptions";
 import { ProtectOptions } from "@/components/tools/options/ProtectOptions";
 import { UnlockOptions } from "@/components/tools/options/UnlockOptions";
+import { NoOptions } from "@/components/tools/options/NoOptions";
 
 /*
  * Dynamic options panel (Section 4.3). Renders the component named by the
@@ -34,6 +35,7 @@ const OPTIONS_COMPONENTS: Record<string, OptionsComponent> = {
   CompressOptions,
   ProtectOptions,
   UnlockOptions,
+  NoOptions,
 };
 
 export function OptionsPanel({

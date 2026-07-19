@@ -41,6 +41,29 @@ const SIGNATURES: Record<string, MagicRule> = {
       b.subarray(0, 4).toString("ascii") === "RIFF" &&
       b.subarray(8, 12).toString("ascii") === "WEBP",
   },
+  ".docx": {
+    mime: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    // OOXML is a ZIP container: "PK\x03\x04" (or the empty/spanned variants).
+    // We can't cheaply prove it's specifically a .docx (that needs reading the
+    // zip's [Content_Types].xml), so we accept the ZIP signature here and let
+    // LibreOffice reject a non-Word zip — a mislabelled .xlsx converts fine
+    // anyway, so this isn't a correctness hole for "document → PDF".
+    test: (b) =>
+      b.length >= 4 &&
+      b[0] === 0x50 &&
+      b[1] === 0x4b &&
+      (b[2] === 0x03 || b[2] === 0x05 || b[2] === 0x07) &&
+      (b[3] === 0x04 || b[3] === 0x06 || b[3] === 0x08),
+  },
+  ".doc": {
+    mime: "application/msword",
+    // Legacy OLE Compound File: D0 CF 11 E0 A1 B1 1A E1.
+    test: (b) =>
+      b.length >= 8 &&
+      b.subarray(0, 8).equals(
+        Buffer.from([0xd0, 0xcf, 0x11, 0xe0, 0xa1, 0xb1, 0x1a, 0xe1]),
+      ),
+  },
 };
 
 export type ValidationResult =

@@ -2,6 +2,7 @@ import type { ServerProcessor } from "./types";
 import { compressPdf } from "./compress-pdf";
 import { protectPdf } from "./protect-pdf";
 import { unlockPdf } from "./unlock-pdf";
+import { wordToPdf } from "./word-to-pdf";
 
 /*
  * Server-tool registry, keyed by the same slug as lib/registry.ts. The worker
@@ -13,7 +14,8 @@ const SERVER_TOOLS: Record<string, ServerProcessor> = {
   "compress-pdf": compressPdf,
   "protect-pdf": protectPdf,
   "unlock-pdf": unlockPdf,
-  // Phase 6 continues: pdf-to-word, word-to-pdf, ... (LibreOffice adapters)
+  "word-to-pdf": wordToPdf,
+  // Phase 8 continues: pdf-to-word, excel/ppt ↔ pdf, ... (LibreOffice adapters)
 };
 
 export function getServerProcessor(slug: string): ServerProcessor | undefined {
