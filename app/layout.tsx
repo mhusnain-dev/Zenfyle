@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Bricolage_Grotesque, JetBrains_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { SessionProvider } from "next-auth/react";
 import { validateRegistry } from "@/lib/registry.validate";
 import { SITE_URL } from "@/lib/site";
 import "./globals.css";
@@ -42,15 +43,21 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // No auth() call here: reading the session cookie in the root layout would
+  // force every page (homepage, all /tools/[slug]) into dynamic rendering and
+  // undo Phase 4's static/SEO generation. The Header reads session client-side
+  // via SessionProvider (useSession) instead, so the shell stays static.
   return (
     <html
       lang="en"
       className={`${bricolage.variable} ${jakarta.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-screen flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <SessionProvider>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </SessionProvider>
       </body>
     </html>
   );

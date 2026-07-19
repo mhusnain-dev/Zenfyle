@@ -33,11 +33,32 @@ model User {
   @@map("users")
 }
 
+// Password-reset tokens (Section 6.4 / v1.4.2). A reset request stores a SHA-256
+// HASH of the random token here (never the token itself, so a DB leak can't be
+// used to reset accounts) with a short expiry; the plaintext token travels only
+// in the emailed link. Consumed on use (deleted) and swept when expired. Not
+// tied to Auth.js's own tables since we use the JWT session strategy (§377) with
+// a Credentials provider, which has no built-in reset store.
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  tokenHash String   @unique @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
 // Section 6.1 jobs — expanded per spec review so failures/status are debuggable.
 model Job {
   id                  String    @id @default(cuid())
   userId              String?   @map("user_id") // nullable — anonymous allowed
   user                User?     @relation(fields: [userId], references: [id])
+  // Salted IP hash of the requester (Section 6.1 style). Lets the concurrency
+  // guard scope "one active job" to an anonymous requester without a user row,
+  // and doubles as abuse-tracing. Nullable for rows created before v1.4.2.
+  ipHash              String?   @map("ip_hash")
   toolSlug            String    @map("tool_slug") // references the tool registry
 
   // queued | processing | success | error | cancelled | expired

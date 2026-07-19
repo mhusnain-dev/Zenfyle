@@ -10,6 +10,7 @@ import {
   useSyncExternalStore,
 } from "react";
 import { ChevronDown, Menu, Search, X } from "lucide-react";
+import { useSession } from "next-auth/react";
 import {
   CATEGORY_LABELS,
   CATEGORY_ORDER,
@@ -54,6 +55,11 @@ function useReducedMotion(): boolean {
 }
 
 export function Header() {
+  // Session read client-side (useSession) so the root layout stays static and
+  // Phase 4's SEO/static generation is preserved. Swaps Log in / Sign up for
+  // Dashboard while authenticated. "authenticated" is the only truthy state.
+  const { status } = useSession();
+  const isLoggedIn = status === "authenticated";
   const [openTab, setOpenTab] = useState<ToolCategory | null>(null);
   const [underline, setUnderline] = useState<{ left: number; width: number } | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -197,18 +203,29 @@ export function Header() {
           >
             <Search size={20} strokeWidth={2} />
           </button>
-          <Link
-            href="/login"
-            className="font-body text-[15px] font-medium text-nav transition-colors hover:text-nav-bright"
-          >
-            Log in
-          </Link>
-          <Link
-            href="/signup"
-            className="rounded-card bg-signal px-4 py-2.5 font-body text-[15px] font-semibold text-white shadow-[0_4px_12px_rgba(255,107,53,0.28)] transition-all hover:bg-signal-hover hover:shadow-[0_6px_16px_rgba(255,107,53,0.36)]"
-          >
-            Sign up free
-          </Link>
+          {isLoggedIn ? (
+            <Link
+              href="/dashboard"
+              className="rounded-card bg-signal px-4 py-2.5 font-body text-[15px] font-semibold text-white shadow-[0_4px_12px_rgba(255,107,53,0.28)] transition-all hover:bg-signal-hover hover:shadow-[0_6px_16px_rgba(255,107,53,0.36)]"
+            >
+              Dashboard
+            </Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="font-body text-[15px] font-medium text-nav transition-colors hover:text-nav-bright"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/signup"
+                className="rounded-card bg-signal px-4 py-2.5 font-body text-[15px] font-semibold text-white shadow-[0_4px_12px_rgba(255,107,53,0.28)] transition-all hover:bg-signal-hover hover:shadow-[0_6px_16px_rgba(255,107,53,0.36)]"
+              >
+                Sign up free
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
@@ -262,11 +279,11 @@ export function Header() {
           Zenfyle
         </Link>
         <Link
-          href="/signup"
-          aria-label="Sign up"
+          href={isLoggedIn ? "/dashboard" : "/signup"}
+          aria-label={isLoggedIn ? "Dashboard" : "Sign up"}
           className="flex h-11 items-center rounded-card bg-signal px-3 font-body text-sm font-semibold text-white transition-colors hover:bg-signal-hover"
         >
-          Sign up
+          {isLoggedIn ? "Dashboard" : "Sign up"}
         </Link>
       </div>
 
@@ -325,6 +342,34 @@ export function Header() {
                 );
               })}
             </nav>
+            <div className="mt-2 flex flex-col gap-2 border-t border-paper-alt/10 px-4 py-4">
+              {isLoggedIn ? (
+                <Link
+                  href="/dashboard"
+                  onClick={() => setDrawerOpen(false)}
+                  className="rounded-card bg-signal px-4 py-3 text-center font-body text-[15px] font-semibold text-white transition-colors hover:bg-signal-hover"
+                >
+                  Dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/login"
+                    onClick={() => setDrawerOpen(false)}
+                    className="rounded-card px-4 py-3 text-center font-body text-[15px] font-medium text-nav transition-colors hover:text-nav-bright"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/signup"
+                    onClick={() => setDrawerOpen(false)}
+                    className="rounded-card bg-signal px-4 py-3 text-center font-body text-[15px] font-semibold text-white transition-colors hover:bg-signal-hover"
+                  >
+                    Sign up free
+                  </Link>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

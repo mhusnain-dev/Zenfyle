@@ -8,6 +8,8 @@ import { getQueue } from "@/lib/queue";
 import { isServerToolImplemented } from "@/lib/server/tools";
 import { validateUpload } from "@/lib/server/validate-upload";
 import { apiError } from "@/lib/server/api-error";
+import { auth } from "@/auth";
+import { getRateLimiter } from "@/lib/server/rate-limit";
 
 /*
  * POST /api/jobs (Section 6.2) — the single entry point for server-side tools.
@@ -66,6 +68,44 @@ export async function POST(req: NextRequest) {
     return apiError("TOOL_UNAVAILABLE", "This tool isn't available yet.");
   }
 
+  // Identify the requester: a logged-in user (higher cap, §13.4) or anonymous
+  // (limited by salted IP hash). The session drives both rate limiting and job
+  // ownership for the dashboard's job history.
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+  const ipHash = hashIp(req);
+
+  // Concurrency guard (§11.10 / §618): one active server job per identity at a
+  // time. A second upload while one is queued/processing is rejected with a
+  // clear message rather than silently queued behind it. Scoped by userId for
+  // logged-in users and by ipHash for anonymous ones (hence ipHash on the job).
+  const activeCount = await prisma.job.count({
+    where: {
+      status: { in: ["queued", "processing"] },
+      ...(userId ? { userId } : { userId: null, ipHash }),
+    },
+  });
+  if (activeCount > 0) {
+    return apiError(
+      "QUEUE_FULL",
+      "Please wait for your current job to finish before starting another.",
+    );
+  }
+
+  // Daily cap (§13.4): 20/day anon, 50/day logged-in. Checked before we accept
+  // the upload so an over-cap request fails fast (413/429) without storing bytes.
+  const rateLimit = await getRateLimiter().check(
+    userId ? { kind: "user", userId } : { kind: "anon", ipHash },
+  );
+  if (!rateLimit.allowed) {
+    return apiError(
+      "RATE_LIMIT_EXCEEDED",
+      userId
+        ? `You've reached your daily limit of ${rateLimit.limit} operations. Try again tomorrow.`
+        : `You've reached the free daily limit of ${rateLimit.limit} operations. Sign up for a higher limit, or try again tomorrow.`,
+    );
+  }
+
   // Parse options if present (same shape the client OptionsPanel emits).
   let options: Record<string, unknown> = {};
   if (typeof rawOptions === "string" && rawOptions.length > 0) {
@@ -100,6 +140,8 @@ export async function POST(req: NextRequest) {
   // Create the job row, then store the input under its id namespace.
   const job = await prisma.job.create({
     data: {
+      userId,
+      ipHash,
       toolSlug,
       status: "queued",
       originalFilename: file.name.slice(0, 255),
@@ -126,9 +168,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Record usage for Phase 7 rate-limiting/analytics (Section 6.1).
+    // Record usage for rate-limiting/analytics (Section 6.1). This row IS the
+    // rate-limit increment the DbRateLimiter counts, so it must be written for
+    // every accepted job (userId scopes logged-in caps, ipHash scopes anon).
     await prisma.usageEvent.create({
-      data: { ipHash: hashIp(req), toolSlug },
+      data: { userId, ipHash, toolSlug },
     });
 
     const queue = await getQueue();

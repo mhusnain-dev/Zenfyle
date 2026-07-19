@@ -2,7 +2,7 @@
 
 Living status doc. Read `CLAUDE.md` first (rules + architecture), then this. Update both as each sub-task completes, not just at context limits. `specs.md` §9 defines the phase order and is the source of truth.
 
-Last updated: **Phase 6 (server-side tools + API) complete** — Compress, Protect, and Unlock PDF all shipped (spec v1.4.1). Ready for owner sign-off before Phase 7.
+Last updated: **Phase 7 (auth + usage tracking + rate limiting) complete** — signup/login/dashboard, password reset (real SMTP email verified), and daily rate limits all shipped and demoed (spec v1.4.2). Ready for owner sign-off before Phase 8.
 
 ---
 
@@ -18,7 +18,7 @@ Last updated: **Phase 6 (server-side tools + API) complete** — Compress, Prote
 
 **Phase 5 — Client-side tools** — shared tool-page template (`components/tools/ToolPageClient.tsx` + `OptionsPanel` lookup map + UploadZone/ProcessingState/ResultState/FileList/RelatedTools). Adapters in `lib/processors/` (pdf-lib). Tools **active**: Merge, Split, Rotate, Organize, Remove Pages (all client), Compress Image (client). Committed (`d957d96`, `bbdd957`, `e92728d`). Fixed a Strict-Mode revoked-blob-URL download bug in `ResultState`.
 
-**Phase 6 — Server-side pipeline + API (core done, proven with Compress PDF)** — NOT yet committed (all still untracked/modified in git):
+**Phase 6 — Server-side pipeline + API (Compress + Protect + Unlock PDF)** — Committed (`f193ede`). (Note: an interrupted `npm audit fix --force` un-committed it once via a stray `git reset`; recommitted intact — see the git-safety note below.)
 - `app/api/jobs/route.ts` — POST create-job (validate → gate → content-validate → create row → store input → record usageEvent → enqueue).
 - `app/api/jobs/[id]/route.ts` — GET poll + DELETE cancel.
 - `app/api/download/[token]/route.ts` — output serving with DB status/expiry re-check.
@@ -70,12 +70,26 @@ None open for Phase 6. Optional future polish (not blocking, not owed): a fully 
 
 ---
 
-## ⏳ Not started (remaining phases, in §9 order)
+## ✅ Done — Phase 7 (Auth + usage tracking + rate limiting) — spec v1.4.2
 
-**Phase 7 — Auth + usage tracking + rate limiting.** Deliverable: sign-up/login working + demonstrate the daily cap actually blocking an anonymous user.
-- Auth.js 5 (`next-auth`/`@auth/core`) is **not yet installed**. Email+password only, no social login (§372). Forgot-password email-link flow (§374).
-- Routes needed: `/login`, `/signup`, `/forgot-password`, `/dashboard` (§13.4/§13.5 defines dashboard contents: account/email, change-password, sign-out, delete-account that nulls `user_id` on jobs; + job history).
-- Rate limiting: **plumbing already exists** — POST `/api/jobs` writes `UsageEvent` (salted `ipHash`, `toolSlug`). Phase 7 just adds the counter check → `RATE_LIMIT_EXCEEDED` (429). No new plumbing.
+All shipped, both gates demoed to the owner (auth core + real SMTP email; rate limiting blocking a request). `npm run build` + `npm run lint` clean; homepage stays `Static` and `/tools/[slug]` stays `SSG` (auth state is read client-side via `SessionProvider`/`useSession`, NOT `auth()` in the root layout — doing that forces every page dynamic and kills SEO; see the layout comment).
+
+**Auth core (Auth.js 5, `next-auth@5.0.0-beta.31`):**
+- Split config for the Edge/Node boundary: `auth.config.ts` is edge-safe (session strategy, pages, `authorized`/`jwt`/`session` callbacks, NO Node deps) and drives `proxy.ts` (Next 16 renamed `middleware.ts` → `proxy.ts`); `auth.ts` spreads it and adds the **Credentials** provider (Prisma + bcryptjs, Node-only). JWT session strategy (§377). `types/next-auth.d.ts` adds `session.user.id`.
+- Password hashing: `bcryptjs` (pure-JS, no native build — `bcrypt`/`argon2` need node-gyp which this sandbox lacks) in `lib/server/password.ts`. Login `authorize` compares against a dummy hash on missing user to keep timing ~constant (anti-enumeration).
+- `AUTH_SECRET` + `AUTH_TRUST_HOST` in `.env`.
+
+**Routes:** `app/(auth)/{login,signup,forgot-password,reset-password}` + `app/dashboard`. Login uses client `signIn(redirect:false)` for inline errors; signup is a Server Action then auto-signs-in. Dashboard is a server component (defence-in-depth `auth()` recheck + `proxy.ts` gate) showing Account (email, change-password, sign-out, delete-account that nulls `user_id` on jobs per §623) + Job history (download link only if `success` && not expired, else greyed "Expired"). Header is session-aware via `useSession` (shows Dashboard vs Log in/Sign up).
+
+**Rate limiting (`RateLimiter` iface, env `RATE_LIMITER`):** `DbRateLimiter` counts `usage_events` since start-of-UTC-day — anon 20/day by `ipHash`, logged-in 50/day by `userId` (§13.4). Checked in POST `/api/jobs` before accepting the upload → `RATE_LIMIT_EXCEEDED` (429). Concurrency guard: one active job per identity → `QUEUE_FULL` (§618). Added `Job.ipHash` (migration `add_job_ip_hash`) so the anon concurrency check scopes per-IP, not globally. Redis limiter is the prod swap (`RATE_LIMITER=redis`), not built.
+
+**Password reset (`MailProvider` iface, env `MAIL_PROVIDER`):** `PasswordResetToken` table stores a SHA-256 **hash** of the token (never plaintext), 1h expiry, single-use (deleted on consume). `ConsoleMailProvider` (dev) logs the link; **`SmtpMailProvider` (nodemailer) verified sending real email via Gmail SMTP** — owner's Gmail + 16-char App Password in `.env` (gitignored). Gmail forces From = authenticated account. Prod swap = a transactional provider (Resend/Postmark/SES), same interface.
+
+**Migrations added this phase:** `add_password_reset_tokens`, `add_job_ip_hash`.
+
+---
+
+## ⏳ Not started (remaining phases, in §9 order)
 
 **Phase 8 — Remaining conversion tools** (one at a time, same show-before-continue gate): PDF↔Word, PDF↔Excel, PDF↔PPT (LibreOffice `soffice` — installed), PDF↔JPG/PNG, Extract Pages, Add Page Numbers, Watermark, Sign, Fill Form, Optimize for Web, Compare PDF, and **Redact PDF** (needs Tesseract OCR — NOT installed; user-space install or keep `comingSoon`).
 
