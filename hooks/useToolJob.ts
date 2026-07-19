@@ -7,6 +7,7 @@ import type {
   Processor,
 } from "@/lib/processors/types";
 import { ClientLimitExceeded } from "@/lib/processors/types";
+import { packageOutputs } from "@/lib/processors/package-outputs";
 
 /*
  * Shared upload → process → download state machine (Section 6.5, 11.1's
@@ -26,7 +27,7 @@ export type JobState =
 
 export type JobProgress = { percent: number; label: string };
 
-export function useToolJob(processor: Processor | undefined) {
+export function useToolJob(slug: string, processor: Processor | undefined) {
   const [state, setState] = useState<JobState>("idle");
   const [progress, setProgress] = useState<JobProgress>({
     percent: 0,
@@ -63,7 +64,11 @@ export function useToolJob(processor: Processor | undefined) {
           controller.signal,
         );
         if (controller.signal.aborted) return; // cancel already set the state
-        setResult(res);
+        // Apply the >3-files ZIP rule centrally (Section 6) so no processor
+        // re-implements packaging.
+        const outputs = await packageOutputs(slug, res.outputs);
+        if (controller.signal.aborted) return;
+        setResult({ ...res, outputs });
         setState("success");
       } catch (err) {
         if (controller.signal.aborted || (err as Error).name === "AbortError") {
@@ -79,7 +84,7 @@ export function useToolJob(processor: Processor | undefined) {
         abortRef.current = null;
       }
     },
-    [processor],
+    [slug, processor],
   );
 
   // Cancel an in-flight run (Section 11.10 upload/processing cancellation).

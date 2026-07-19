@@ -12,7 +12,16 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/tools/split-pdf)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/tools/nonsense)",
       "Bash(curl -s http://localhost:3000)",
-      "Bash(git commit -q -m 'Phase 5: Merge PDF end-to-end + shared tool page template *)"
+      "Bash(git commit -q -m 'Phase 5: Merge PDF end-to-end + shared tool page template *)",
+      "Bash(cd *)",
+      "Bash(node -e \"const p=require\\('./node_modules/pdfjs-dist/package.json'\\); console.log\\('version',p.version\\); console.log\\('main',p.main\\); console.log\\('module',p.module\\); console.log\\('exports keys:', Object.keys\\(p.exports||{}\\).join\\(', '\\)\\)\")",
+      "Bash(node --experimental-strip-types -e ' *)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}\\\\n' --max-time 5 http://localhost:3000/)",
+      "Bash(curl -s http://localhost:3000/tools/split-pdf)",
+      "Bash(curl -s http://localhost:3000/tools/rotate-pdf)",
+      "Bash(curl -s http://localhost:3000/tools/compress-image)",
+      "Bash(curl -s http://localhost:3000/)",
+      "Bash(git commit -q -m 'Phase 6: five more client-side tools \\(Split, Rotate, Organize, Remove, Compress\\) *)"
     ]
   }
 }

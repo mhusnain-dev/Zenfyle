@@ -1,5 +1,10 @@
 import type { Processor } from "@/lib/processors/types";
 import { mergePdf } from "@/lib/processors/merge-pdf";
+import { splitPdf } from "@/lib/processors/split-pdf";
+import { rotatePdf } from "@/lib/processors/rotate-pdf";
+import { organizePages } from "@/lib/processors/organize-pages";
+import { removePages } from "@/lib/processors/remove-pages";
+import { compressImage } from "@/lib/processors/compress-image";
 
 /*
  * Client-side processor lookup (Section 4.3 / 11.5). Maps a tool slug to its
@@ -9,6 +14,11 @@ import { mergePdf } from "@/lib/processors/merge-pdf";
  */
 const PROCESSORS: Record<string, Processor> = {
   "merge-pdf": mergePdf,
+  "split-pdf": splitPdf,
+  "rotate-pdf": rotatePdf,
+  "organize-pages": organizePages,
+  "remove-pages": removePages,
+  "compress-image": compressImage,
 };
 
 export function getProcessor(slug: string): Processor | undefined {

@@ -26,7 +26,7 @@ export function ToolPageClient({ tool }: { tool: Tool }) {
   const [pickError, setPickError] = useState<string | null>(null);
 
   const { state, progress, result, error, needsServer, run, cancel, reset } =
-    useToolJob(processor);
+    useToolJob(tool.slug, processor);
 
   const minFiles = tool.acceptsMultipleFiles ? 2 : 1;
 

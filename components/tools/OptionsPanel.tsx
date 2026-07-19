@@ -3,6 +3,11 @@
 import type { ProcessOptions } from "@/lib/processors/types";
 import type { Tool } from "@/lib/registry";
 import { MergeOptions } from "@/components/tools/options/MergeOptions";
+import { SplitOptions } from "@/components/tools/options/SplitOptions";
+import { RotateOptions } from "@/components/tools/options/RotateOptions";
+import { OrganizeOptions } from "@/components/tools/options/OrganizeOptions";
+import { RemovePagesOptions } from "@/components/tools/options/RemovePagesOptions";
+import { CompressOptions } from "@/components/tools/options/CompressOptions";
 
 /*
  * Dynamic options panel (Section 4.3). Renders the component named by the
@@ -20,6 +25,11 @@ export type OptionsComponent = (props: {
 
 const OPTIONS_COMPONENTS: Record<string, OptionsComponent> = {
   MergeOptions,
+  SplitOptions,
+  RotateOptions,
+  OrganizeOptions,
+  RemovePagesOptions,
+  CompressOptions,
 };
 
 export function OptionsPanel({

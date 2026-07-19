@@ -73,8 +73,12 @@ export const mergePdf: Processor = async (input, onProgress, signal) => {
   // Uint8Array's possibly-larger backing buffer.
   const body = out.slice().buffer;
   return {
-    blob: new Blob([body], { type: "application/pdf" }),
-    filename: outputFilename(slug, ext),
+    outputs: [
+      {
+        blob: new Blob([body], { type: "application/pdf" }),
+        filename: outputFilename(slug, ext),
+      },
+    ],
     summary: `${files.length} files merged into 1 PDF (${pageCount} pages)`,
   };
 };

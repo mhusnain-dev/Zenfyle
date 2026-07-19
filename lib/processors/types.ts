@@ -13,13 +13,28 @@ export type ProcessInput = {
   options: ProcessOptions;
 };
 
-export type ProcessResult = {
+export type OutputFile = {
   /** The produced file, ready to hand to a download link. */
   blob: Blob;
-  /** Output name — always the zenfyle-{slug}-{shortId}.{ext} convention (13.8). */
+  /** Output name — the zenfyle-{slug}-{shortId}[-pNN].{ext} convention (13.8). */
   filename: string;
+};
+
+export type ProcessResult = {
+  /**
+   * One or more produced files. Single-output tools return one; multi-output
+   * tools (e.g. Split) return many. The >3-files ZIP rule (Section 6) is
+   * applied centrally after the processor returns — processors always return
+   * the raw per-file list here, never a pre-zipped bundle.
+   */
+  outputs: OutputFile[];
   /** Human summary for the result screen, e.g. "12 pages merged into 1 file". */
   summary: string;
+  /**
+   * Optional secondary note for the result screen — e.g. Compress reporting the
+   * file was already optimally sized and returned unchanged (Section 11.6).
+   */
+  note?: string;
 };
 
 /** Report coarse progress (0–100) and an honest status label (Section 4.2 step 3). */
