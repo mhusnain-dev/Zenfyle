@@ -5,6 +5,8 @@ import { unlockPdf } from "./unlock-pdf";
 import { wordToPdf } from "./word-to-pdf";
 import { excelToPdf } from "./excel-to-pdf";
 import { pptToPdf } from "./ppt-to-pdf";
+import { pdfToJpg } from "./pdf-to-jpg";
+import { pdfToPng } from "./pdf-to-png";
 
 /*
  * Server-tool registry, keyed by the same slug as lib/registry.ts. The worker
@@ -19,7 +21,9 @@ const SERVER_TOOLS: Record<string, ServerProcessor> = {
   "word-to-pdf": wordToPdf,
   "excel-to-pdf": excelToPdf,
   "ppt-to-pdf": pptToPdf,
-  // Phase 8 continues: pdf-to-word/excel/ppt (lossy reverse), image ↔ pdf, ...
+  "pdf-to-jpg": pdfToJpg,
+  "pdf-to-png": pdfToPng,
+  // Phase 8 continues: pdf-to-word/excel/ppt (lossy reverse), jpg-to-pdf, ...
 };
 
 export function getServerProcessor(slug: string): ServerProcessor | undefined {
