@@ -3,6 +3,8 @@ import { compressPdf } from "./compress-pdf";
 import { protectPdf } from "./protect-pdf";
 import { unlockPdf } from "./unlock-pdf";
 import { wordToPdf } from "./word-to-pdf";
+import { excelToPdf } from "./excel-to-pdf";
+import { pptToPdf } from "./ppt-to-pdf";
 
 /*
  * Server-tool registry, keyed by the same slug as lib/registry.ts. The worker
@@ -15,7 +17,9 @@ const SERVER_TOOLS: Record<string, ServerProcessor> = {
   "protect-pdf": protectPdf,
   "unlock-pdf": unlockPdf,
   "word-to-pdf": wordToPdf,
-  // Phase 8 continues: pdf-to-word, excel/ppt ↔ pdf, ... (LibreOffice adapters)
+  "excel-to-pdf": excelToPdf,
+  "ppt-to-pdf": pptToPdf,
+  // Phase 8 continues: pdf-to-word/excel/ppt (lossy reverse), image ↔ pdf, ...
 };
 
 export function getServerProcessor(slug: string): ServerProcessor | undefined {

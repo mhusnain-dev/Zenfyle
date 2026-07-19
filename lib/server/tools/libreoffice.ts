@@ -2,6 +2,12 @@ import { spawn } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { ProcessingError } from "./types";
+import type {
+  ServerProcessInput,
+  ServerProcessResult,
+  ServerProgressReporter,
+  ServerProcessor,
+} from "./types";
 
 /*
  * LibreOffice integration (Section 11.5) — the ONE place `soffice` is invoked
@@ -93,4 +99,42 @@ export async function convertToPdf(
   }
 
   return outputPath;
+}
+
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/*
+ * Factory for the "office document → PDF" server tools (Word/Excel/PPT → PDF).
+ * All three are the same lossless LibreOffice conversion differing only in the
+ * output filename slug, so each adapter is one line: `makeToPdfConverter("...")`.
+ * The reverse direction (PDF → Office) is lossy and gets its own adapters.
+ */
+export function makeToPdfConverter(slug: string): ServerProcessor {
+  return async (
+    input: ServerProcessInput,
+    onProgress: ServerProgressReporter,
+    signal: AbortSignal,
+  ): Promise<ServerProcessResult> => {
+    await onProgress("converting", 20);
+
+    const producedPath = await convertToPdf(input.inputPath, input.workDir, signal);
+    if (signal.aborted) throw new Error("cancelled");
+
+    // Rename to the spec's output convention (zenfyle-{slug}-{shortId}.pdf).
+    const outputName = `zenfyle-${slug}-${input.shortId}.pdf`;
+    const outputPath = path.join(input.workDir, outputName);
+    await fs.rename(producedPath, outputPath);
+
+    await onProgress("finishing", 100);
+
+    const { size } = await fs.stat(outputPath);
+    return {
+      outputs: [{ path: outputPath, filename: outputName }],
+      summary: `Converted to PDF (${fmtBytes(size)}).`,
+    };
+  };
 }
