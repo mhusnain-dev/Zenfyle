@@ -16,7 +16,7 @@ import type { Annotation } from "@/lib/processors/annotations";
  * import.meta.url so the bundler emits the worker asset — no manual public/
  * copy and no CDN dependency.
  */
-type Tool = "highlight" | "text" | "ink";
+type Tool = "move" | "highlight" | "text" | "ink";
 
 const COLORS = ["#ffd54a", "#c0392b", "#1e6fff", "#2ecc71", "#111111"];
 const INK_WIDTH = 2;
@@ -147,6 +147,9 @@ export function AnnotateOptions({
     | null
     | { kind: "highlight"; x0: number; y0: number }
     | { kind: "ink"; points: { x: number; y: number }[] }
+    // move: the index (into annotations) being dragged and the last pointer
+    // position, so each move applies an incremental delta.
+    | { kind: "move"; index: number; last: { x: number; y: number }; moved: boolean }
   >(null);
 
   const norm = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -161,7 +164,10 @@ export function AnnotateOptions({
     if (!rendered) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const p = norm(e);
-    if (tool === "highlight") drag.current = { kind: "highlight", x0: p.x, y0: p.y };
+    if (tool === "move") {
+      const index = hitTest(annotations, pageNum, p, rendered);
+      if (index >= 0) drag.current = { kind: "move", index, last: p, moved: false };
+    } else if (tool === "highlight") drag.current = { kind: "highlight", x0: p.x, y0: p.y };
     else if (tool === "ink") drag.current = { kind: "ink", points: [p] };
     else if (tool === "text") {
       const text = window.prompt("Text to add:");
@@ -181,6 +187,20 @@ export function AnnotateOptions({
     const overlay = overlayRef.current;
     const ctx = overlay?.getContext("2d");
     if (!ctx || !overlay || !rendered) return;
+
+    if (d.kind === "move") {
+      // Commit each incremental delta to state so the composite effect repaints;
+      // keeps a single source of truth (no separate preview path for move).
+      const dx = p.x - d.last.x;
+      const dy = p.y - d.last.y;
+      d.last = p;
+      d.moved = true;
+      setAnnotations(
+        annotations.map((a, i) => (i === d.index ? translate(a, dx, dy) : a)),
+      );
+      return;
+    }
+
     // Live preview: repaint page + committed annotations, then the in-progress one.
     ctx.clearRect(0, 0, overlay.width, overlay.height);
     ctx.drawImage(rendered.canvas, 0, 0);
@@ -209,6 +229,7 @@ export function AnnotateOptions({
     const d = drag.current;
     drag.current = null;
     if (!d) return;
+    if (d.kind === "move") return; // already committed incrementally
     const p = norm(e);
     if (d.kind === "highlight") {
       const w = Math.abs(p.x - d.x0);
@@ -244,7 +265,7 @@ export function AnnotateOptions({
   return (
     <div className="space-y-3" ref={containerRef}>
       <div className="flex flex-wrap items-center gap-2">
-        {(["highlight", "text", "ink"] as Tool[]).map((t) => (
+        {(["move", "highlight", "text", "ink"] as Tool[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -255,7 +276,13 @@ export function AnnotateOptions({
                 : "border-border bg-white text-text-secondary"
             }`}
           >
-            {t === "ink" ? "Draw" : t === "text" ? "Text" : "Highlight"}
+            {t === "ink"
+              ? "Draw"
+              : t === "text"
+                ? "Text"
+                : t === "move"
+                  ? "Move"
+                  : "Highlight"}
           </button>
         ))}
         <span className="mx-1 h-5 w-px bg-border" />
@@ -278,6 +305,7 @@ export function AnnotateOptions({
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
+        style={{ cursor: tool === "move" ? "move" : "crosshair" }}
         className="w-full touch-none rounded-card border border-border bg-white"
       />
 
@@ -361,4 +389,55 @@ function drawAnnotations(
     }
     ctx.restore();
   }
+}
+
+/* Return the index of the topmost annotation on `page` under point `p`
+ * (normalized), or -1. Iterates back-to-front so the most recently drawn
+ * (visually on top) wins. `rendered` gives the pixel aspect used to size the
+ * click tolerance for zero-area targets (text baselines, thin ink). */
+function hitTest(
+  anns: Annotation[],
+  page: number,
+  p: { x: number; y: number },
+  rendered: { width: number; height: number },
+): number {
+  const padX = 6 / rendered.width; // ~6px grab tolerance
+  const padY = 6 / rendered.height;
+  for (let i = anns.length - 1; i >= 0; i--) {
+    const a = anns[i];
+    if (a.page !== page) continue;
+    if (a.type === "highlight") {
+      if (
+        p.x >= a.x - padX &&
+        p.x <= a.x + a.width + padX &&
+        p.y >= a.y - padY &&
+        p.y <= a.y + a.height + padY
+      )
+        return i;
+    } else if (a.type === "text") {
+      // Approximate the text box: width from char count, height from size.
+      const hNorm = a.size / 792;
+      const wNorm = Math.max(0.02, a.text.length * a.size * 0.5) / 612;
+      if (
+        p.x >= a.x - padX &&
+        p.x <= a.x + wNorm + padX &&
+        p.y >= a.y - padY &&
+        p.y <= a.y + hNorm + padY
+      )
+        return i;
+    } else if (a.type === "ink") {
+      // Hit if the point is near any vertex of the stroke.
+      if (a.points.some((q) => Math.abs(q.x - p.x) <= padX * 2 && Math.abs(q.y - p.y) <= padY * 2))
+        return i;
+    }
+  }
+  return -1;
+}
+
+/* Shift an annotation by a normalized delta, returning a new object (state
+ * stays immutable). Ink translates every point. */
+function translate(a: Annotation, dx: number, dy: number): Annotation {
+  if (a.type === "ink")
+    return { ...a, points: a.points.map((q) => ({ x: q.x + dx, y: q.y + dy })) };
+  return { ...a, x: a.x + dx, y: a.y + dy };
 }
