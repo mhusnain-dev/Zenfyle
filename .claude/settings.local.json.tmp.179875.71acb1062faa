@@ -74,7 +74,8 @@
       "Bash(python3 *)",
       "Bash(git commit -q -m 'Phase 8: Excel to PDF + PPT to PDF \\(shared LibreOffice factory\\) *)",
       "Bash(git commit -q -m 'Phase 8: PDF to JPG + PDF to PNG \\(Ghostscript, multi-output ZIP\\) *)",
-      "Bash(git commit -q -m 'docs: Phase 8 progress \\(5 tools shipped, ZIP path verified\\) *)"
+      "Bash(git commit -q -m 'docs: Phase 8 progress \\(5 tools shipped, ZIP path verified\\) *)",
+      "Bash(git commit -q -m 'Phase 8: extract-pages, jpg-to-pdf, add-page-numbers, add-watermark \\(client, pdf-lib\\) *)"
     ]
   }
 }

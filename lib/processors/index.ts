@@ -5,6 +5,10 @@ import { rotatePdf } from "@/lib/processors/rotate-pdf";
 import { organizePages } from "@/lib/processors/organize-pages";
 import { removePages } from "@/lib/processors/remove-pages";
 import { compressImage } from "@/lib/processors/compress-image";
+import { extractPages } from "@/lib/processors/extract-pages";
+import { jpgToPdf } from "@/lib/processors/jpg-to-pdf";
+import { addPageNumbers } from "@/lib/processors/add-page-numbers";
+import { addWatermark } from "@/lib/processors/add-watermark";
 
 /*
  * Client-side processor lookup (Section 4.3 / 11.5). Maps a tool slug to its
@@ -19,6 +23,10 @@ const PROCESSORS: Record<string, Processor> = {
   "organize-pages": organizePages,
   "remove-pages": removePages,
   "compress-image": compressImage,
+  "extract-pages": extractPages,
+  "jpg-to-pdf": jpgToPdf,
+  "add-page-numbers": addPageNumbers,
+  "add-watermark": addWatermark,
 };
 
 export function getProcessor(slug: string): Processor | undefined {

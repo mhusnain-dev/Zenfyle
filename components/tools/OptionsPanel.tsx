@@ -11,6 +11,9 @@ import { CompressOptions } from "@/components/tools/options/CompressOptions";
 import { ProtectOptions } from "@/components/tools/options/ProtectOptions";
 import { UnlockOptions } from "@/components/tools/options/UnlockOptions";
 import { NoOptions } from "@/components/tools/options/NoOptions";
+import { ExtractPagesOptions } from "@/components/tools/options/ExtractPagesOptions";
+import { PageNumbersOptions } from "@/components/tools/options/PageNumbersOptions";
+import { WatermarkOptions } from "@/components/tools/options/WatermarkOptions";
 
 /*
  * Dynamic options panel (Section 4.3). Renders the component named by the
@@ -36,6 +39,9 @@ const OPTIONS_COMPONENTS: Record<string, OptionsComponent> = {
   ProtectOptions,
   UnlockOptions,
   NoOptions,
+  ExtractPagesOptions,
+  PageNumbersOptions,
+  WatermarkOptions,
 };
 
 export function OptionsPanel({
