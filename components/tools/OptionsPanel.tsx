@@ -15,6 +15,7 @@ import { ExtractPagesOptions } from "@/components/tools/options/ExtractPagesOpti
 import { PageNumbersOptions } from "@/components/tools/options/PageNumbersOptions";
 import { WatermarkOptions } from "@/components/tools/options/WatermarkOptions";
 import { SignOptions } from "@/components/tools/options/SignOptions";
+import { FillFormOptions } from "@/components/tools/options/FillFormOptions";
 
 /*
  * Dynamic options panel (Section 4.3). Renders the component named by the
@@ -44,6 +45,7 @@ const OPTIONS_COMPONENTS: Record<string, OptionsComponent> = {
   PageNumbersOptions,
   WatermarkOptions,
   SignOptions,
+  FillFormOptions,
 };
 
 export function OptionsPanel({

@@ -515,7 +515,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["form", "fields", "fill"],
     featured: false,
     homepageOrder: 5,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".pdf",
     optionsComponent: "FillFormOptions",
