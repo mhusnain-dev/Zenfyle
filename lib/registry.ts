@@ -495,7 +495,7 @@ export const TOOLS: readonly Tool[] = [
     searchKeywords: ["signature", "esign"],
     featured: false,
     homepageOrder: 4,
-    status: "comingSoon",
+    status: "active",
     acceptsMultipleFiles: false,
     outputExtension: ".pdf",
     optionsComponent: "SignOptions",
