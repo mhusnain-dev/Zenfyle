@@ -47,15 +47,21 @@ function runSoffice(
 }
 
 /**
- * Convert an office document at `inputPath` to PDF, writing the result into
- * `workDir` and returning its absolute path. `workDir` also hosts the per-job
+ * Core soffice conversion: convert `inputPath` to `targetExt` (e.g. "pdf",
+ * "docx", "pptx"), writing into `workDir` and returning the produced file's
+ * absolute path. `infilter` forces the import filter — required for the reverse
+ * PDF→Office direction (e.g. "writer_pdf_import"), omitted for the forward
+ * direction where soffice auto-detects. `workDir` also hosts the per-job
  * LibreOffice profile so concurrent conversions don't collide. Throws a
- * ProcessingError (mapped to a user message) if soffice fails or emits nothing.
+ * ProcessingError if soffice fails or emits nothing (it can exit 0 having
+ * produced no output for a document it can't actually read).
  */
-export async function convertToPdf(
+export async function convert(
   inputPath: string,
+  targetExt: string,
   workDir: string,
   signal: AbortSignal,
+  infilter?: string,
 ): Promise<string> {
   const profileDir = path.join(workDir, "lo-profile");
   const args = [
@@ -63,12 +69,9 @@ export async function convertToPdf(
     "--nologo",
     "--nofirststartwizard",
     `-env:UserInstallation=file://${profileDir}`,
-    "--convert-to",
-    "pdf",
-    "--outdir",
-    workDir,
-    inputPath,
   ];
+  if (infilter) args.push(`-infilter=${infilter}`);
+  args.push("--convert-to", targetExt, "--outdir", workDir, inputPath);
 
   let result: { code: number | null; stderr: string; stdout: string };
   try {
@@ -83,22 +86,30 @@ export async function convertToPdf(
 
   if (signal.aborted) throw new Error("cancelled");
 
-  // soffice names the output after the input basename with a .pdf extension,
-  // placed in outdir. Derive that path and confirm it was actually written —
-  // soffice can exit 0 having produced nothing for a document it can't read.
+  // soffice names the output after the input basename with the target ext,
+  // placed in outdir. Derive that path and confirm it was actually written.
   const base = path.basename(inputPath, path.extname(inputPath));
-  const outputPath = path.join(workDir, `${base}.pdf`);
+  const outputPath = path.join(workDir, `${base}.${targetExt}`);
 
   try {
     await fs.access(outputPath);
   } catch {
     throw new ProcessingError(
-      "This document couldn't be converted — it may be corrupted or in an unsupported format.",
+      "This document couldn't be converted — it may be corrupted, encrypted, or in an unsupported format.",
       { code: "FILE_CORRUPTED", cause: result.stderr || result.stdout },
     );
   }
 
   return outputPath;
+}
+
+/** Backwards-compatible helper: convert any office doc to PDF. */
+export async function convertToPdf(
+  inputPath: string,
+  workDir: string,
+  signal: AbortSignal,
+): Promise<string> {
+  return convert(inputPath, "pdf", workDir, signal);
 }
 
 function fmtBytes(n: number): string {
@@ -135,6 +146,54 @@ export function makeToPdfConverter(slug: string): ServerProcessor {
     return {
       outputs: [{ path: outputPath, filename: outputName }],
       summary: `Converted to PDF (${fmtBytes(size)}).`,
+    };
+  };
+}
+
+/*
+ * Factory for the "PDF → office document" reverse tools. This direction is
+ * inherently LOSSY — a PDF has no editable document model, so LibreOffice
+ * reconstructs one from the page content: PDF→Word (writer_pdf_import) recovers
+ * flowing text but not the exact layout; PDF→PPT (impress_pdf_import) places
+ * each page as an image on a slide. We surface an honest `note` on every result
+ * rather than implying a perfect round-trip (§4.1c honesty rule). PDF→Excel is
+ * deliberately NOT built: LibreOffice has no PDF→Calc import filter, and faking
+ * table extraction would violate the anti-hallucination rule (§588) — it stays
+ * comingSoon until a real table-extraction engine is available.
+ */
+export function makeFromPdfConverter(
+  slug: string,
+  targetExt: string,
+  infilter: string,
+  note: string,
+): ServerProcessor {
+  return async (
+    input: ServerProcessInput,
+    onProgress: ServerProgressReporter,
+    signal: AbortSignal,
+  ): Promise<ServerProcessResult> => {
+    await onProgress("converting", 20);
+
+    const producedPath = await convert(
+      input.inputPath,
+      targetExt,
+      input.workDir,
+      signal,
+      infilter,
+    );
+    if (signal.aborted) throw new Error("cancelled");
+
+    const outputName = `zenfyle-${slug}-${input.shortId}.${targetExt}`;
+    const outputPath = path.join(input.workDir, outputName);
+    await fs.rename(producedPath, outputPath);
+
+    await onProgress("finishing", 100);
+
+    const { size } = await fs.stat(outputPath);
+    return {
+      outputs: [{ path: outputPath, filename: outputName }],
+      summary: `Converted to ${targetExt.toUpperCase()} (${fmtBytes(size)}).`,
+      note,
     };
   };
 }

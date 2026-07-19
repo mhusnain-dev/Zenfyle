@@ -7,6 +7,8 @@ import { excelToPdf } from "./excel-to-pdf";
 import { pptToPdf } from "./ppt-to-pdf";
 import { pdfToJpg } from "./pdf-to-jpg";
 import { pdfToPng } from "./pdf-to-png";
+import { pdfToWord } from "./pdf-to-word";
+import { pdfToPpt } from "./pdf-to-ppt";
 
 /*
  * Server-tool registry, keyed by the same slug as lib/registry.ts. The worker
@@ -23,7 +25,10 @@ const SERVER_TOOLS: Record<string, ServerProcessor> = {
   "ppt-to-pdf": pptToPdf,
   "pdf-to-jpg": pdfToJpg,
   "pdf-to-png": pdfToPng,
-  // Phase 8 continues: pdf-to-word/excel/ppt (lossy reverse), jpg-to-pdf, ...
+  "pdf-to-word": pdfToWord,
+  "pdf-to-ppt": pdfToPpt,
+  // pdf-to-excel stays comingSoon: LibreOffice has no PDF→Calc import filter,
+  // and faking table extraction would violate the anti-hallucination rule (§588).
 };
 
 export function getServerProcessor(slug: string): ServerProcessor | undefined {

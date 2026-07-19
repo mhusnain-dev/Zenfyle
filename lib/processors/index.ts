@@ -9,6 +9,7 @@ import { extractPages } from "@/lib/processors/extract-pages";
 import { jpgToPdf } from "@/lib/processors/jpg-to-pdf";
 import { addPageNumbers } from "@/lib/processors/add-page-numbers";
 import { addWatermark } from "@/lib/processors/add-watermark";
+import { optimizeForWeb } from "@/lib/processors/optimize-for-web";
 
 /*
  * Client-side processor lookup (Section 4.3 / 11.5). Maps a tool slug to its
@@ -27,6 +28,7 @@ const PROCESSORS: Record<string, Processor> = {
   "jpg-to-pdf": jpgToPdf,
   "add-page-numbers": addPageNumbers,
   "add-watermark": addWatermark,
+  "optimize-for-web": optimizeForWeb,
 };
 
 export function getProcessor(slug: string): Processor | undefined {
