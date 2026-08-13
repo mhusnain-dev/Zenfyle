@@ -235,7 +235,7 @@ MIT — see [LICENSE](LICENSE).
 
 ---
 
-## 🙏 Credits
+## Credits
 
 - **Design tokens & product direction** — Project owner
 - **Icons** — Lucide, Font Awesome 6 (react-icons)
