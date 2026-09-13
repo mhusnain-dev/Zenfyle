@@ -1,5 +1,4 @@
 import type { JobQueue } from "./types";
-import { processJob } from "@/lib/server/process-job";
 import { cleanupJob, sweepExpiredJobs } from "@/lib/server/cleanup";
 import { prisma } from "@/lib/db";
 
@@ -13,6 +12,11 @@ import { prisma } from "@/lib/db";
  * Cancellation is real here: each running job gets an AbortController, and
  * cancel() aborts it (Section 11.10). Queued-but-not-started jobs are cancelled
  * by marking the row so processJob short-circuits when it dequeues.
+ *
+ * processJob is lazily imported inside enqueue() rather than at module top
+ * level: it pulls in the whole tool-adapter barrel (dynamic fs/path operations),
+ * and this module must stay out of the static import graph of Route Handlers so
+ * Next's file tracer doesn't drag the entire project into route bundles.
  */
 class InProcessQueue implements JobQueue {
   private readonly controllers = new Map<string, AbortController>();
@@ -34,6 +38,9 @@ class InProcessQueue implements JobQueue {
     // Run after the current tick so the POST handler can return "queued" first.
     setImmediate(async () => {
       try {
+        // Lazy so the heavy worker pipeline isn't loaded until a job actually
+        // runs in-process (keeps the route/queue modules import-clean).
+        const { processJob } = await import("@/lib/server/process-job");
         const result = await processJob(jobId, controller.signal);
         if (result.status === "success") {
           // 2h cleanup (Section 6). In dev this is an in-memory timer.

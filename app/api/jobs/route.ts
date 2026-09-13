@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { getTool } from "@/lib/registry";
 import { getStorage, storageKeys, SECOND_INPUT_FILENAME } from "@/lib/storage";
 import { getQueue } from "@/lib/queue";
-import { isServerToolImplemented } from "@/lib/server/tools";
+import { isServerToolImplemented } from "@/lib/server/tools/registry";
 import { validateUpload } from "@/lib/server/validate-upload";
 import { apiError } from "@/lib/server/api-error";
 import { auth } from "@/auth";
