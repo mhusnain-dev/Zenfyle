@@ -52,11 +52,11 @@ This protocol exists because the human is non-technical and needs to see working
 If any box is unchecked, the phase is not done — don't report it as complete.
 
 ## 1. Product Summary
-**Zenfyle** is the name of this webapp — a responsive, all-in-one file utility platform (PDF, image, and document tools) similar in function to iLovePDF, but with a distinct visual identity: an "ink & paper workshop" aesthetic rather than a generic SaaS look. Tools run client-side wherever possible to minimize server cost; heavy conversions (PDF↔Word/Excel, OCR) run server-side via a job queue.
+**Zenfyle** is the name of this webapp — a responsive, all-in-one file utility platform (PDF, image, and document tools) with a distinct visual identity: an "ink & paper workshop" aesthetic rather than a generic SaaS look. Tools run client-side wherever possible to minimize server cost; heavy conversions (PDF↔Word/Excel, OCR) run server-side via a job queue.
 
 **Non-negotiable goals:**
 - Fully responsive: mobile (360px+), tablet, desktop, large desktop.
-- Header navigation must visually and functionally exceed iLovePDF's — see Section 3 in full detail, build EXACTLY as specified.
+- Header navigation must visually and functionally exceed comparable tools — see Section 3 in full detail, build EXACTLY as specified.
 - Backend must be modular so new tools can be added without touching unrelated code.
 - Database only stores what's necessary — no over-engineering (see Section 6).
 

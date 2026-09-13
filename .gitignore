@@ -48,6 +48,9 @@ prisma/*.db*
 # vercel
 .vercel
 
+# claude code local config, memory, sessions
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
