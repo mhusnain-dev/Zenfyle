@@ -76,6 +76,10 @@ npm run dev              # Starts on :3000 (or :3001 if occupied)
 > special characters, percent-encode them in the URL: `@` → `%40`, `#` → `%23`
 > (e.g. `H@feez786#abc` → `H%40feez786%23abc`). A raw `@`/`#` in the password
 > mis-parses the host and you'll get connection errors.
+> **Supabase:** use the **Session pooler** host (`aws-0-<region>.pooler.supabase.com:5432`)
+> — the direct `db.<ref>.supabase.co` host is IPv6-only and unreachable from
+> Railway/Vercel. Append `?sslmode=no-verify` (pooler cert is self-signed; TLS
+> stays encrypted). Other providers keep `?sslmode=require`.
 
 Open **http://localhost:3000**
 

@@ -34,8 +34,28 @@ function postgresUrl(): string {
 }
 
 function createClient(): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: postgresUrl() });
+  const url = postgresUrl();
+  const ssl = supabaseTlsConfig(url);
+  const adapter = new PrismaPg({
+    connectionString: url,
+    ...(ssl ? { ssl } : {}),
+  });
   return new PrismaClient({ adapter });
+}
+
+/*
+ * Supabase's Session/Transaction pooler (Supavisor) presents a self-signed
+ * certificate, so node-postgres refuses the handshake by default
+ * ("self-signed certificate in certificate chain"). TLS is still used — we
+ * just skip cert CHAIN verification, which is standard for Supabase pooler
+ * connections. Other providers (Neon, Railway Postgres) keep the default
+ * verify-on behavior.
+ */
+function supabaseTlsConfig(url: string): { rejectUnauthorized: false } | undefined {
+  const host = url.match(/@([^:/?#]+)/)?.[1] ?? "";
+  return host.includes("supabase.com") || host.includes("supabase.co")
+    ? { rejectUnauthorized: false }
+    : undefined;
 }
 
 function getPrisma(): PrismaClient {
