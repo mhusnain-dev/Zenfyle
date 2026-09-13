@@ -5,7 +5,7 @@ import { defineConfig } from "prisma/config";
  * Prisma 7 config. As of v7 the connection URL lives here (used by the migrate
  * and introspection CLI) rather than in schema.prisma's datasource block, and
  * the runtime PrismaClient is built with a driver adapter (see lib/db.ts).
- * Swapping to Postgres later = change DATABASE_URL + the schema provider.
+ * The schema provider is "postgresql"; DATABASE_URL is a postgres:// URL.
  *
  * The datasource block is intentionally CONDITIONAL: Railway and similar build
  * platforms run `npm install` / `npm run build` *before* environment variables

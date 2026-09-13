@@ -28,7 +28,7 @@ A responsive, all-in-one PDF and document utility platform with an "ink & paper 
 | PDF/Image (client) | pdf-lib, pdf.js, browser-image-compression, jsPDF, exceljs |
 | PDF/OCR (server) | **Ghostscript**, **LibreOffice headless**, **qpdf**, **Tesseract** |
 | Queue | BullMQ 5 + Redis (Upstash) — *dev uses in-process queue* |
-| Database | Prisma 6 + Postgres (Neon) — *dev uses SQLite (`./dev.db`)* |
+| Database | Prisma 7 + Postgres (Supabase/Neon) — dev and prod both use Postgres |
 | Auth | Auth.js 5 (Credentials + JWT), bcryptjs |
 | Storage | `StorageProvider` interface — LocalDisk (dev) / R2 (prod) |
 | Icons | Lucide (primary) + react-icons/fa6 (file-format glyphs) |
@@ -63,12 +63,19 @@ npm install
 
 # Environment (copy .env.example → .env and fill in)
 cp .env.example .env
-# Required: DATABASE_URL, NEXTAUTH_SECRET, NEXTAUTH_URL
+# Required: DATABASE_URL (Postgres connection string — dev uses the same
+# Supabase/Neon Postgres as prod; see "DATABASE_URL formats" below),
+# AUTH_SECRET, AUTH_URL
 # Optional: REDIS_URL, SMTP_*, MAIL_PROVIDER=smtp, STORAGE_PROVIDER=r2
 
-npx prisma migrate dev   # Creates ./dev.db at repo root
+npx prisma migrate dev   # Applies migrations to your Postgres
 npm run dev              # Starts on :3000 (or :3001 if occupied)
 ```
+
+> **DATABASE_URL formats:** Postgres is used everywhere. If your password contains
+> special characters, percent-encode them in the URL: `@` → `%40`, `#` → `%23`
+> (e.g. `H@feez786#abc` → `H%40feez786%23abc`). A raw `@`/`#` in the password
+> mis-parses the host and you'll get connection errors.
 
 Open **http://localhost:3000**
 
@@ -134,7 +141,7 @@ npx prisma studio  # DB GUI
 
 | Variable | Required | Purpose |
 |----------|----------|---------|
-| `DATABASE_URL` | ✅ | `file:./dev.db` (dev) or Postgres (prod) |
+| `DATABASE_URL` | ✅ | Postgres connection string (dev = same Supabase/Neon as prod) |
 | `NEXTAUTH_SECRET` | ✅ | Auth.js session encryption |
 | `NEXTAUTH_URL` | ✅ | `http://localhost:3000` (dev) |
 | `REDIS_URL` | ❌ | Upstash Redis — enables BullMQ worker |
@@ -196,7 +203,7 @@ The dashboard (`/dashboard`) provides authenticated users with:
 
 | Component | Dev | Production |
 |-----------|-----|------------|
-| Database | SQLite (`./dev.db`) | Postgres (Neon) — change `provider` in `schema.prisma` |
+| Database | Postgres (Supabase/Neon) | Postgres (Supabase/Neon) — same connection string, no provider swap needed |
 | Queue | In-process (`setImmediate`) | BullMQ + Upstash Redis (`REDIS_URL`) |
 | Storage | Local disk (`.storage/`) | Cloudflare R2 (S3-compatible) |
 | Mail | Console (logs reset link) | Transactional (Resend/Postmark/SES) via `SmtpMailProvider` interface |

@@ -1,10 +1,10 @@
-// Zenfyle data model (Section 6.1). Provider is SQLite for local solo dev
-// (free, zero-setup, survives restarts on disk); the schema is written to be
-// Postgres-portable so the spec's pinned Neon/Postgres is a provider + URL
-// swap, not a rewrite:
+// Zenfyle data model (Section 6.1). Provider is Postgres for both production
+// (Supabase/Neon per the spec's pinned target) and local dev — lib/db.ts always
+// uses the @prisma/adapter-pg driver adapter, because Prisma 7 rejects a driver
+// adapter whose dialect differs from the schema provider. The schema stays
+// portable-friendly anyway:
 //   - status fields are String + app-level validation, not native enums
-//     (SQLite has no enum type; Postgres would allow one but keeping String
-//     avoids an enum migration when swapping)
+//     (avoids enum migration churn if a different DB is ever pinned)
 //   - all timestamps are DateTime, ids are cuid strings
 // NOTE (deviation): spec Section 6 pinned Prisma 6.x; 7.x is the current major
 // at install time, so per Section 6's "use the new major and note it" rule we
@@ -18,7 +18,7 @@ generator client {
 // Prisma 7: connection URL lives in prisma.config.ts, not here. The runtime
 // client is constructed with a driver adapter (lib/db.ts).
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 // Section 6.1 users — email + password only (Auth.js wired in Phase 7).

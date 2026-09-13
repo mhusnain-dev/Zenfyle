@@ -50,8 +50,8 @@ Last updated: **Phase 8 complete + owner-requested OCR category (spec v1.4.4)** 
 - `lib/queue/` — `JobQueue` interface + `InProcessQueue` (dev, `setImmediate`, real AbortController cancellation) + `BullMQQueue` (prod) + async `getQueue()` selector (`REDIS_URL` → which backend).
 - `lib/storage/` — `StorageProvider` interface + `LocalDiskProvider` (writes `./.storage`, base64url token signed URLs; expiry enforced at the download route, not in the token).
 - `lib/processors/server-job.ts` — browser side of server tools (upload → poll 2s → download), returns the same `ProcessResult` shape as client processors.
-- `lib/db.ts` — Prisma client via `@prisma/adapter-better-sqlite3`.
-- `prisma/schema.prisma` (SQLite) + `prisma.config.ts` — `Job` + `UsageEvent` + `User` models.
+- `lib/db.ts` — Prisma client via `@prisma/adapter-pg` (Postgres everywhere; lazy singleton so builds run with no env).
+- `prisma/schema.prisma` (Postgres) + `prisma.config.ts` — `Job` + `UsageEvent` + `User` models.
 - **Compress PDF adapter** (`lib/server/tools/compress-pdf.ts`) — Ghostscript `gs`, presets low/medium/high → `/prepress`/`/ebook`/`/screen`, never-larger-than-input fallback. Registry flipped to **active**.
 - **Verified end-to-end** against the running dev server: 30-page PDF 36KB→17KB, plus zero-byte (400), non-PDF (415), client-only-via-API (404), comingSoon (404), bad token, cancel, expired-download — all handled. `npm run build` + `npm run lint` clean.
 - **qpdf installed** user-space (no sudo): `apt-get download` + `dpkg-deb -x` → `~/.local/qpdf`, wrapper `~/.local/bin/qpdf` sets `LD_LIBRARY_PATH`. Verified encrypt/decrypt/wrong-password exit codes (see below). On PATH persistently via `.bashrc`.
