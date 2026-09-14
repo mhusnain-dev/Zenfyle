@@ -1,10 +1,15 @@
 import type { StorageProvider } from "./types";
 import { LocalDiskProvider } from "./local-disk";
+import { SupabaseStorageProvider } from "./supabase";
 
 /*
- * Single place that picks the storage backend from env (Section 6). Swapping to
- * R2 later means adding an R2Provider branch here and setting STORAGE_PROVIDER
- * — no tool/worker/route code changes.
+ * Single place that picks the storage backend from env (Section 6). Swapping
+ * backends is a branch here + env vars — no tool/worker/route code changes.
+ *   "local"    = filesystem under STORAGE_DIR (dev + testing; ephemeral disk)
+ *   "supabase" = Supabase Storage (production), requires a manually created
+ *                PRIVATE bucket + SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY /
+ *                SUPABASE_STORAGE_BUCKET (see .env.example).
+ * R2 is a documented future option (case "r2" stub below).
  */
 let instance: StorageProvider | undefined;
 
@@ -21,7 +26,24 @@ export function getStorage(): StorageProvider {
         appUrl,
       );
       break;
-    // case "r2": instance = new R2Provider(...); break;  // added before launch
+    case "supabase": {
+      const url = process.env.SUPABASE_URL;
+      const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+      if (!url || !serviceRoleKey) {
+        throw new Error(
+          "SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required when " +
+            "STORAGE_PROVIDER=supabase. Create a private bucket named per " +
+            "SUPABASE_STORAGE_BUCKET (default \"zenfyle\") first — see .env.example.",
+        );
+      }
+      instance = new SupabaseStorageProvider(
+        url,
+        serviceRoleKey,
+        process.env.SUPABASE_STORAGE_BUCKET ?? "zenfyle",
+      );
+      break;
+    }
+    // case "r2": instance = new R2Provider(...); break;  // future option
     default:
       throw new Error(`Unknown STORAGE_PROVIDER: ${provider}`);
   }
